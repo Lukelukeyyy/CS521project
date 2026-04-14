@@ -1,4 +1,6 @@
 import random
+import math
+from statistics import mean
 
 from mining_sim.model import SimulationConfig, SimulationResult
 
@@ -97,7 +99,7 @@ def simulate_selfish_mining(config):
 
     random_number_generator = random.Random(config.seed)
 
-    # lead means: attacker private chain length - public chain length.
+    # lead: attacker private chain length - public chain length.
     private_chain_lead = 0
     attacker_revenue = 0
     honest_revenue = 0
@@ -125,4 +127,49 @@ def simulate_selfish_mining(config):
 
     return build_simulation_result(config, private_chain_lead, attacker_revenue,
                                    honest_revenue, orphaned_blocks)
+
+# ---------- simulation results helper function ---------------
+# run_trials function to average simulation results
+def run_trials(config, trials):
+    # Repeat the same setup several times and average the results.
+    results = []
+
+    for trial_number in range(trials):
+        trial_seed = None
+        if config.seed is not None:
+            trial_seed = config.seed + trial_number
+
+        trial_config = SimulationConfig(alpha=config.alpha, gamma=config.gamma,
+                                        blocks=config.blocks, seed=trial_seed)
+        results.append(simulate_selfish_mining(trial_config))
+
+    attacker_revenue = round(mean(r.attacker_revenue for r in results))
+    honest_revenue = round(mean(r.honest_revenue for r in results))
+    orphaned_blocks = round(mean(r.orphaned_blocks for r in results))
+    relative_revenue = mean(r.relative_revenue for r in results)
+    revenue_gain = relative_revenue - config.alpha
+
+    return SimulationResult(alpha=config.alpha, gamma=config.gamma, blocks=config.blocks,
+                            attacker_revenue=attacker_revenue, honest_revenue=honest_revenue,
+                            orphaned_blocks=orphaned_blocks, relative_revenue=relative_revenue,
+                            revenue_gain=revenue_gain, profitable=revenue_gain > 0)
+
+# sweep function to test multiple alpha and gamma values
+def sweep(gammas, *, blocks, trials, seed, alpha_step):
+    # Test many alpha values so we can find where the attack becomes profitable.
+    rows = []
+    alpha_steps = int(math.floor(0.49 / alpha_step))
+
+    for gamma_index, gamma in enumerate(gammas):
+        for step in range(1, alpha_steps + 1):
+            alpha = round(step * alpha_step, 6)
+            trial_seed = None
+            if seed is not None:
+                trial_seed = seed + gamma_index * 100_000 + step * 100
+
+            config = SimulationConfig(alpha=alpha, gamma=gamma, blocks=blocks, seed=trial_seed)
+            result = run_trials(config, trials=trials)
+            rows.append(result)
+
+    return rows
 
