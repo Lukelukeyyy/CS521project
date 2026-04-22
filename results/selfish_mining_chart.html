@@ -1,0 +1,433 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Selfish Mining Simulator</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --ink: #17202a;
+      --muted: #5f6b76;
+      --grid: #d8dee5;
+      --accent: #087f8c;
+      --warn: #b43b53;
+      --gold: #b7791f;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: Arial, Helvetica, sans-serif;
+      color: var(--ink);
+      background: #ffffff;
+    }
+
+    header, main {
+      width: min(1120px, calc(100% - 32px));
+      margin: 0 auto;
+    }
+
+    header {
+      padding: 28px 0 16px;
+    }
+
+    h1 {
+      margin: 0 0 8px;
+      font-size: 32px;
+      line-height: 1.15;
+    }
+
+    p {
+      margin: 0;
+      color: var(--muted);
+      line-height: 1.55;
+      max-width: 900px;
+    }
+
+    .chart-block {
+      margin-top: 24px;
+    }
+
+    .chart-title {
+      font-size: 20px;
+      margin: 0 0 8px;
+    }
+
+    .chart-desc {
+      color: var(--muted);
+      margin: 0 0 12px;
+      line-height: 1.5;
+    }
+
+    .chart-wrap {
+      width: 100%;
+      border: 1px solid #dfe5eb;
+      border-radius: 8px;
+      overflow: hidden;
+      background: #fff;
+    }
+
+    canvas {
+      display: block;
+      width: 100%;
+      height: min(56vh, 460px);
+      min-height: 320px;
+    }
+
+    .legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 18px;
+      padding: 10px 0 0;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .key {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .swatch {
+      width: 22px;
+      height: 3px;
+      border-radius: 3px;
+      display: inline-block;
+    }
+
+    .accent {
+      background: var(--accent);
+    }
+
+    .warn {
+      background: var(--warn);
+    }
+
+    .gold {
+      background: var(--gold);
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1 id="pageTitle"></h1>
+    <p id="pageDesc"></p>
+  </header>
+
+  <main>
+    <section class="chart-block">
+      <h2 class="chart-title" id="revenueTitle"></h2>
+      <p class="chart-desc" id="revenueDesc"></p>
+      <div class="chart-wrap">
+        <canvas id="revenueChart" width="1100" height="460"></canvas>
+      </div>
+      <div class="legend" id="revenueLegend"></div>
+    </section>
+
+    <section class="chart-block" id="gammaSection" style="display:none;">
+      <h2 class="chart-title" id="gammaTitle"></h2>
+      <p class="chart-desc" id="gammaDesc"></p>
+      <div class="chart-wrap">
+        <canvas id="gammaChart" width="1100" height="460"></canvas>
+      </div>
+      <div class="legend" id="gammaLegend"></div>
+    </section>
+  </main>
+
+  <script>
+    const rows = [{"experiment": "latency_sweep", "sweepValue": 20.0, "alpha": 0.3, "gamma": 0.7633333333333333, "threshold": 0.16063348416289594, "relativeRevenue": 0.3553206568022178, "gain": 0.055320656802217816, "attackerLatency": 20.0, "honestLatency": 100.0, "poolSize": 0.2, "profitable": true}, {"experiment": "latency_sweep", "sweepValue": 40.0, "alpha": 0.3, "gamma": 0.68, "threshold": 0.19512195121951217, "relativeRevenue": 0.34735556272964285, "gain": 0.047355562729642864, "attackerLatency": 40.0, "honestLatency": 100.0, "poolSize": 0.2, "profitable": true}, {"experiment": "latency_sweep", "sweepValue": 60.0, "alpha": 0.3, "gamma": 0.6175, "threshold": 0.21671388101983002, "relativeRevenue": 0.33941105262187166, "gain": 0.03941105262187167, "attackerLatency": 60.0, "honestLatency": 100.0, "poolSize": 0.2, "profitable": true}, {"experiment": "latency_sweep", "sweepValue": 80.0, "alpha": 0.3, "gamma": 0.5688888888888889, "threshold": 0.2315035799522673, "relativeRevenue": 0.33424498755282606, "gain": 0.03424498755282607, "attackerLatency": 80.0, "honestLatency": 100.0, "poolSize": 0.2, "profitable": true}, {"experiment": "latency_sweep", "sweepValue": 100.0, "alpha": 0.3, "gamma": 0.53, "threshold": 0.2422680412371134, "relativeRevenue": 0.3286209479389644, "gain": 0.028620947938964414, "attackerLatency": 100.0, "honestLatency": 100.0, "poolSize": 0.2, "profitable": true}];
+    const experiment = "latency_sweep";
+
+    const pageTitle = document.getElementById("pageTitle");
+    const pageDesc = document.getElementById("pageDesc");
+
+    const revenueTitle = document.getElementById("revenueTitle");
+    const revenueDesc = document.getElementById("revenueDesc");
+    const revenueLegend = document.getElementById("revenueLegend");
+
+    const gammaSection = document.getElementById("gammaSection");
+    const gammaTitle = document.getElementById("gammaTitle");
+    const gammaDesc = document.getElementById("gammaDesc");
+    const gammaLegend = document.getElementById("gammaLegend");
+
+    const revenueCanvas = document.getElementById("revenueChart");
+    const gammaCanvas = document.getElementById("gammaChart");
+
+    function sortRows(data) {
+      // Sort rows by the sweep variable.
+      return [...data].sort((a, b) => a.sweepValue - b.sweepValue);
+    }
+
+    function getXAxisInfo(row) {
+      // Use alpha for experiment 1 and latency for experiment 2.
+      if (experiment === "latency_sweep") {
+        return { value: row.attackerLatency, label: "Attacker latency (ms)" };
+      }
+      return { value: row.alpha, label: "Alpha" };
+    }
+
+    function setupPage() {
+      // ---------------- experiment 1: legacy ----------------
+      if (experiment === "legacy") {
+        pageTitle.textContent = "Experiment 1: Gamma Sweep";
+        pageDesc.textContent =
+          "We directly sweep gamma values to study how selfish mining profitability depends on network advantage.";
+
+        revenueTitle.textContent = "Relative Revenue vs Alpha";
+        revenueDesc.textContent =
+          "The teal line shows simulated attacker revenue. The dashed red line is the fair-share line y = x. The gold line indicates the theoretical profitability threshold.";
+
+        revenueLegend.innerHTML = `
+          <span class="key"><span class="swatch accent"></span>Simulated relative revenue</span>
+          <span class="key"><span class="swatch warn"></span>Break-even line y = x</span>
+          <span class="key"><span class="swatch gold"></span>Theoretical threshold</span>
+        `;
+      }
+
+      // ---------------- experiment 2: latency sweep ----------------
+      else if (experiment === "latency_sweep") {
+        pageTitle.textContent = "Experiment 2: Latency Sweep";
+        pageDesc.textContent =
+          "Alpha and pool size are fixed. Latency changes gamma first, and gamma then changes the attacker's relative revenue.";
+
+        revenueTitle.textContent = "Relative Revenue vs Attacker Latency";
+        revenueDesc.textContent =
+          "This plot shows the final effect of latency changes on attacker revenue.";
+
+        revenueLegend.innerHTML = `
+          <span class="key"><span class="swatch accent"></span>Simulated relative revenue</span>
+        `;
+
+        gammaSection.style.display = "block";
+        gammaTitle.textContent = "Gamma vs Attacker Latency";
+        gammaDesc.textContent =
+          "This helper plot shows the mechanism: attacker latency changes gamma first, and gamma then affects revenue.";
+
+        gammaLegend.innerHTML = `
+          <span class="key"><span class="swatch gold"></span>Gamma implied by latency</span>
+        `;
+      }
+
+      else {
+        pageTitle.textContent = "Selfish Mining Results";
+        pageDesc.textContent = "Simulation output.";
+        revenueTitle.textContent = "Chart";
+        revenueDesc.textContent = "";
+      }
+    }
+
+    function drawLineChart(canvas, config) {
+      // Draw one line chart on the given canvas.
+      const ctx = canvas.getContext("2d");
+      const ratio = window.devicePixelRatio || 1;
+      const box = canvas.getBoundingClientRect();
+
+      canvas.width = Math.round(box.width * ratio);
+      canvas.height = Math.round(box.height * ratio);
+      ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
+
+      const width = box.width;
+      const height = box.height;
+
+      const pad = { left: 68, right: 28, top: 24, bottom: 54 };
+      const plotW = width - pad.left - pad.right;
+      const plotH = height - pad.top - pad.bottom;
+
+      ctx.clearRect(0, 0, width, height);
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(0, 0, width, height);
+
+      const xMin = config.xMin;
+      const xMax = config.xMax;
+      const yMin = config.yMin;
+      const yMax = config.yMax;
+
+      function xMap(x) {
+        return pad.left + (x - xMin) / (xMax - xMin || 1) * plotW;
+      }
+
+      function yMap(y) {
+        return pad.top + (1 - (y - yMin) / (yMax - yMin || 1)) * plotH;
+      }
+
+      // Draw grid.
+      ctx.strokeStyle = "#d8dee5";
+      ctx.lineWidth = 1;
+      ctx.fillStyle = "#5f6b76";
+      ctx.font = "13px Arial";
+
+      for (let i = 0; i <= 5; i++) {
+        const xv = xMin + (xMax - xMin) * i / 5;
+        const px = xMap(xv);
+        ctx.beginPath();
+        ctx.moveTo(px, pad.top);
+        ctx.lineTo(px, pad.top + plotH);
+        ctx.stroke();
+        ctx.fillText(xv.toFixed(2), px - 12, pad.top + plotH + 24);
+      }
+
+      for (let i = 0; i <= 6; i++) {
+        const yv = yMin + (yMax - yMin) * i / 6;
+        const py = yMap(yv);
+        ctx.beginPath();
+        ctx.moveTo(pad.left, py);
+        ctx.lineTo(pad.left + plotW, py);
+        ctx.stroke();
+        ctx.fillText(yv.toFixed(2), 18, py + 4);
+      }
+
+      // Draw axis labels.
+      ctx.fillStyle = "#17202a";
+      ctx.font = "14px Arial";
+      ctx.fillText(config.xLabel, pad.left + plotW / 2 - 50, height - 14);
+
+      ctx.save();
+      ctx.translate(18, pad.top + plotH / 2 + 60);
+      ctx.rotate(-Math.PI / 2);
+      ctx.fillText(config.yLabel, 0, 0);
+      ctx.restore();
+
+      // Draw extra guide elements if needed.
+      if (config.extraDraw) {
+        config.extraDraw(ctx, xMap, yMap, pad, width, height);
+      }
+
+      // Draw main line.
+      ctx.strokeStyle = config.lineColor;
+      ctx.lineWidth = 3;
+      ctx.setLineDash([]);
+      ctx.beginPath();
+
+      config.points.forEach((point, index) => {
+        const px = xMap(point.x);
+        const py = yMap(point.y);
+        if (index === 0) {
+          ctx.moveTo(px, py);
+        } else {
+          ctx.lineTo(px, py);
+        }
+      });
+
+      ctx.stroke();
+
+      // Draw points.
+      ctx.fillStyle = config.lineColor;
+      config.points.forEach((point) => {
+        const px = xMap(point.x);
+        const py = yMap(point.y);
+        ctx.beginPath();
+        ctx.arc(px, py, 3.5, 0, Math.PI * 2);
+        ctx.fill();
+      });
+    }
+
+    function drawRevenueChart(sortedRows) {
+      // Draw the main revenue chart.
+      const xInfo = getXAxisInfo(sortedRows[0]);
+      const points = sortedRows.map((row) => ({
+        x: getXAxisInfo(row).value,
+        y: row.relativeRevenue
+      }));
+
+      const xValues = points.map((point) => point.x);
+      const yValues = points.map((point) => point.y);
+
+      const config = {
+        xLabel: xInfo.label,
+        yLabel: "Relative attacker revenue",
+        xMin: Math.min(...xValues),
+        xMax: Math.max(...xValues),
+        yMin: 0,
+        yMax: Math.max(0.65, ...yValues.map((value) => value + 0.05)),
+        points: points,
+        lineColor: "#087f8c",
+        extraDraw: null
+      };
+
+      // Only experiment 1 needs threshold and y=x guide.
+      if (experiment === "legacy") {
+        const threshold = sortedRows[0].threshold;
+
+        config.extraDraw = (ctx, xMap, yMap, pad, width, height) => {
+          // Draw y = x reference line.
+          ctx.strokeStyle = "#b43b53";
+          ctx.lineWidth = 2;
+          ctx.setLineDash([7, 6]);
+          ctx.beginPath();
+
+          sortedRows.forEach((row, index) => {
+            const px = xMap(row.alpha);
+            const py = yMap(row.alpha);
+            if (index === 0) {
+              ctx.moveTo(px, py);
+            } else {
+              ctx.lineTo(px, py);
+            }
+          });
+
+          ctx.stroke();
+
+          // Draw theoretical threshold.
+          ctx.setLineDash([]);
+          ctx.strokeStyle = "#b7791f";
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.moveTo(xMap(threshold), pad.top);
+          ctx.lineTo(xMap(threshold), height - pad.bottom);
+          ctx.stroke();
+
+          ctx.fillStyle = "#17202a";
+          ctx.font = "13px Arial";
+          ctx.fillText(`threshold ≈ ${threshold.toFixed(3)}`, xMap(threshold) + 8, pad.top + 18);
+        };
+      }
+
+      drawLineChart(revenueCanvas, config);
+    }
+
+    function drawGammaChart(sortedRows) {
+      // Only experiment 2 uses the helper gamma chart.
+      if (experiment !== "latency_sweep") {
+        return;
+      }
+
+      const xInfo = getXAxisInfo(sortedRows[0]);
+      const points = sortedRows.map((row) => ({
+        x: getXAxisInfo(row).value,
+        y: row.gamma
+      }));
+
+      const xValues = points.map((point) => point.x);
+      const yValues = points.map((point) => point.y);
+
+      drawLineChart(gammaCanvas, {
+        xLabel: xInfo.label,
+        yLabel: "Gamma",
+        xMin: Math.min(...xValues),
+        xMax: Math.max(...xValues),
+        yMin: Math.max(0, Math.min(...yValues) - 0.05),
+        yMax: Math.min(1, Math.max(...yValues) + 0.05),
+        points: points,
+        lineColor: "#b7791f",
+        extraDraw: null
+      });
+    }
+
+    function render() {
+      // Render all charts.
+      const sortedRows = sortRows(rows);
+      drawRevenueChart(sortedRows);
+      drawGammaChart(sortedRows);
+    }
+
+    setupPage();
+    window.addEventListener("resize", render);
+    render();
+  </script>
+</body>
+</html>
