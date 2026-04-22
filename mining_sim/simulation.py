@@ -28,7 +28,9 @@ def resolve_public_race(config, random_number_generator, mining_events,
     race_random_number = random_number_generator.random()
 
     attacker_finds_race_block = race_random_number < config.alpha
-    honest_mines_on_attacker_branch = (race_random_number < config.alpha + (1 - config.alpha) * config.gamma)
+    honest_mines_on_attacker_branch = (
+            race_random_number < config.alpha + (1 - config.alpha) * config.gamma
+    )
 
     if attacker_finds_race_block:
         # Attacker wins both blocks.
@@ -121,7 +123,8 @@ def simulate_selfish_mining(config):
             private_chain_lead += 1
             continue
 
-        (private_chain_lead, mining_events, attacker_revenue, honest_revenue, orphaned_blocks, should_break,) \
+        (private_chain_lead, mining_events, attacker_revenue,
+         honest_revenue, orphaned_blocks, should_break,) \
             = handle_honest_block(config,random_number_generator,
                                 private_chain_lead, mining_events,
                                 attacker_revenue, honest_revenue, orphaned_blocks)

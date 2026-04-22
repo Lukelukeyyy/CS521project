@@ -4,7 +4,6 @@ from pathlib import Path
 from mining_sim.model import gamma_from_latency, theoretical_threshold
 from mining_sim.output import write_csv
 from mining_sim.simulation import sweep, latency_sweep, pool_sweep
-from mining_sim.visualization import write_html
 
 
 def parse_gammas(raw):
@@ -43,7 +42,7 @@ def parse_float_list(raw):
 def build_parser():
     # Define the command-line options for the simulator.
     parser = argparse.ArgumentParser(
-        description="Simulate selfish mining profitability and generate a visualization."
+        description="Simulate selfish mining profitability and export CSV results."
     )
     parser.add_argument("--blocks", type=int, default=100000, help="mining events per trial")
     parser.add_argument("--trials", type=int, default=8, help="Monte Carlo trials per alpha")
@@ -51,7 +50,6 @@ def build_parser():
     parser.add_argument("--gammas", type=parse_gammas, default=parse_gammas("0,0.25,0.5,0.75"))
     parser.add_argument("--seed", type=int, default=521, help="random seed")
     parser.add_argument("--csv", type=Path, default=Path("results/selfish_mining_sweep.csv"))
-    parser.add_argument("--html", type=Path, default=Path("results/selfish_mining_chart.html"))
     parser.add_argument("--experiment", choices=["legacy", "latency", "pool"], default="legacy")
     parser.add_argument("--alpha", type=float, default=0.30, help="fixed alpha for latency and pool sweep")
     parser.add_argument("--pool-size", type=float, default=None, help="attacker pool share for latency mode")
@@ -134,10 +132,8 @@ def main():
         parser.error("unknown experiment")
 
     write_csv(args.csv, simulation_results)
-    write_html(args.html, simulation_results)
 
     print(f"wrote {args.csv}")
-    print(f"wrote {args.html}")
 
     printed_gammas = []
     for row in simulation_results:
