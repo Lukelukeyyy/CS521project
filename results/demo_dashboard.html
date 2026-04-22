@@ -1,0 +1,792 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Selfish Mining Demo Dashboard</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #f3efe7;
+      --panel: rgba(255, 252, 246, 0.84);
+      --panel-strong: #fffdf8;
+      --ink: #14212b;
+      --muted: #5f6a72;
+      --line: rgba(20, 33, 43, 0.12);
+      --accent: #0f766e;
+      --accent-2: #d97706;
+      --danger: #bf1238;
+      --good: #166534;
+      --shadow: 0 24px 60px rgba(20, 33, 43, 0.12);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: "Segoe UI Variable", "Avenir Next", "Trebuchet MS", sans-serif;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at top left, rgba(15, 118, 110, 0.18), transparent 28%),
+        radial-gradient(circle at top right, rgba(217, 119, 6, 0.14), transparent 22%),
+        linear-gradient(180deg, #f8f4ec 0%, #f3efe7 48%, #efe9de 100%);
+      min-height: 100vh;
+    }
+
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      background-image:
+        linear-gradient(rgba(20, 33, 43, 0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(20, 33, 43, 0.03) 1px, transparent 1px);
+      background-size: 30px 30px;
+      pointer-events: none;
+      mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.7), transparent);
+    }
+
+    .shell {
+      width: min(1280px, calc(100% - 28px));
+      margin: 0 auto;
+      padding: 28px 0 48px;
+      position: relative;
+    }
+
+    .hero {
+      margin-bottom: 18px;
+    }
+
+    .panel {
+      background: var(--panel);
+      backdrop-filter: blur(16px);
+      border: 1px solid rgba(255, 255, 255, 0.7);
+      border-radius: 26px;
+      box-shadow: var(--shadow);
+    }
+
+    .hero-copy {
+      padding: 30px;
+    }
+
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      padding: 4px 0;
+      border-radius: 0;
+      background: transparent;
+      color: #000000;
+      letter-spacing: 0.02em;
+      text-transform: none;
+      font-size: 30px;
+      font-weight: 900;
+      line-height: 1.1;
+      margin-bottom: 8px;
+    }
+
+    h1, h2, h3 {
+      font-family: "Iowan Old Style", "Palatino Linotype", Georgia, serif;
+      margin: 0;
+      letter-spacing: -0.03em;
+    }
+
+    h1 {
+      font-size: clamp(36px, 6vw, 64px);
+      line-height: 0.98;
+      margin-bottom: 16px;
+      max-width: 12ch;
+    }
+
+    .hero-copy p,
+    .mini-copy,
+    .callout p,
+    .metric-sub,
+    .section-intro,
+    .insight {
+      color: var(--muted);
+      line-height: 1.6;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: 360px minmax(0, 1fr);
+      gap: 18px;
+      align-items: start;
+    }
+
+    .controls {
+      padding: 22px;
+      position: sticky;
+      top: 18px;
+    }
+
+    .control-stack,
+    .cards,
+    .evidence-grid {
+      display: grid;
+      gap: 14px;
+    }
+
+    .control {
+      padding: 14px 16px;
+      border-radius: 20px;
+      background: rgba(255, 255, 255, 0.78);
+      border: 1px solid var(--line);
+    }
+
+    .control-top,
+    label {
+      font-weight: 600;
+    }
+
+    input[type="range"] {
+      width: 100%;
+      accent-color: var(--accent);
+    }
+
+    .value {
+      font-variant-numeric: tabular-nums;
+      color: var(--accent);
+      font-weight: 700;
+    }
+
+    .toggle-row {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    button {
+      border: 1px solid var(--line);
+      background: rgba(255, 255, 255, 0.65);
+      color: var(--ink);
+      padding: 10px 14px;
+      border-radius: 999px;
+      cursor: pointer;
+      transition: transform 160ms ease, background 160ms ease, border-color 160ms ease;
+    }
+
+    button.active {
+      background: var(--ink);
+      color: #fff;
+      border-color: var(--ink);
+    }
+
+    button:hover {
+      transform: translateY(-1px);
+    }
+
+    .content {
+      display: grid;
+      gap: 18px;
+    }
+
+    .cards {
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+
+    .card {
+      padding: 18px;
+      border-radius: 22px;
+      background: var(--panel-strong);
+      border: 1px solid rgba(20, 33, 43, 0.08);
+      box-shadow: 0 14px 34px rgba(20, 33, 43, 0.08);
+      min-height: 132px;
+      animation: rise 440ms ease both;
+    }
+
+    .metric-value {
+      font-size: clamp(24px, 3vw, 34px);
+      font-weight: 800;
+      margin: 10px 0 8px;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .profit-good { color: var(--good); }
+    .profit-bad { color: var(--danger); }
+
+    .stage {
+      padding: 24px;
+    }
+
+    .chart {
+      width: 100%;
+      height: clamp(320px, 44vh, 460px);
+      display: block;
+      background: linear-gradient(180deg, rgba(255, 255, 255, 0.9), rgba(248, 246, 241, 0.88));
+      border: 1px solid rgba(20, 33, 43, 0.08);
+      border-radius: 22px;
+    }
+
+    .legend {
+      display: flex;
+      gap: 18px;
+      flex-wrap: wrap;
+      color: var(--muted);
+      font-size: 14px;
+      margin-top: 14px;
+    }
+
+    .legend span {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .swatch {
+      width: 22px;
+      height: 4px;
+      border-radius: 999px;
+      display: inline-block;
+    }
+
+    .evidence-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .callout {
+      margin-top: 18px;
+      padding: 16px 18px;
+      border-left: 4px solid var(--accent-2);
+      border-radius: 16px;
+      background: rgba(217, 119, 6, 0.08);
+    }
+
+    @keyframes rise {
+      from { transform: translateY(12px); opacity: 0; }
+      to { transform: translateY(0); opacity: 1; }
+    }
+
+    @media (max-width: 1080px) {
+      .grid, .cards, .evidence-grid { grid-template-columns: 1fr; }
+      .controls { position: static; }
+    }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <section class="hero">
+      <div class="panel hero-copy">
+        <div class="eyebrow">Bitcoin Mining • Selfish Mining • Demo Mode</div>
+      </div>
+    </section>
+
+    <div class="grid">
+      <aside class="panel controls">
+        <div class="control-stack">
+          <div class="control">
+            <div class="control-top">
+              <label>Gamma mode</label>
+            </div>
+            <div class="toggle-row">
+              <button id="derivedMode" class="active" type="button">Derived from network</button>
+              <button id="manualMode" type="button">Manual gamma</button>
+            </div>
+          </div>
+
+          <div class="control">
+            <div class="control-top">
+              <label for="alphaRange">Attacker hash share alpha</label>
+              <span class="value" id="alphaValue">0.30</span>
+            </div>
+            <input id="alphaRange" type="range" min="0.05" max="0.49" step="0.01" value="0.30">
+          </div>
+
+          <div class="control">
+            <div class="control-top">
+              <label for="attackerLatencyRange">Attacker latency</label>
+              <span class="value" id="attackerLatencyValue">50 ms</span>
+            </div>
+            <input id="attackerLatencyRange" type="range" min="10" max="140" step="5" value="50">
+          </div>
+
+          <div class="control">
+            <div class="control-top">
+              <label for="honestLatencyRange">Honest latency</label>
+              <span class="value" id="honestLatencyValue">100 ms</span>
+            </div>
+            <input id="honestLatencyRange" type="range" min="40" max="180" step="5" value="100">
+          </div>
+
+          <div class="control">
+            <div class="control-top">
+              <label for="poolRange">Pool size / propagation reach</label>
+              <span class="value" id="poolValue">0.20</span>
+            </div>
+            <input id="poolRange" type="range" min="0" max="0.6" step="0.05" value="0.2">
+          </div>
+
+          <div class="control">
+            <div class="control-top">
+              <label for="manualGammaRange">Manual gamma override</label>
+              <span class="value" id="manualGammaValue">0.53</span>
+            </div>
+            <input id="manualGammaRange" type="range" min="0" max="1" step="0.01" value="0.53">
+          </div>
+        </div>
+      </aside>
+
+      <main class="content">
+        <section class="cards">
+          <article class="card">
+            <div class="metric-value" id="gammaMetric">0.530</div>
+            <div class="metric-sub" id="gammaExplanation">Derived from latency and pool size.</div>
+          </article>
+          <article class="card">
+            <div class="metric-value" id="thresholdMetric">0.242</div>
+            <div class="metric-sub">Profit requires alpha &gt; (1 - gamma) / (3 - 2 gamma).</div>
+          </article>
+          <article class="card">
+            <div class="metric-value" id="revenueMetric">0.298</div>
+            <div class="metric-sub" id="revenueEvidence">Estimated from the nearest simulated gamma curves in Experiment 1.</div>
+          </article>
+          <article class="card">
+            <div class="metric-value" id="profitMetric">Profitable</div>
+            <div class="metric-sub" id="profitSub">The modeled attacker is above its break-even threshold.</div>
+          </article>
+        </section>
+
+        <section class="panel stage">
+          <canvas id="curveChart" class="chart" width="980" height="460"></canvas>
+          <div class="legend">
+            <span><i class="swatch" style="background: var(--accent)"></i>Interpolated simulated revenue</span>
+            <span><i class="swatch" style="background: var(--danger)"></i>Break-even line y = x</span>
+            <span><i class="swatch" style="background: var(--accent-2)"></i>Theoretical threshold</span>
+          </div>
+        </section>
+
+        <section class="panel stage">
+          <canvas id="gammaChart" class="chart" width="980" height="420"></canvas>
+          <div class="legend">
+            <span><i class="swatch" style="background: var(--accent-2)"></i>Gamma implied by attacker latency</span>
+            <span><i class="swatch" style="background: var(--danger)"></i>Current attacker latency</span>
+          </div>
+        </section>
+
+        <section class="evidence-grid">
+          <article class="panel stage">
+            <canvas id="latencyChart" class="chart" width="680" height="390"></canvas>
+            <div class="insight" id="latencyInsight"></div>
+          </article>
+
+          <article class="panel stage">
+            <canvas id="poolChart" class="chart" width="680" height="390"></canvas>
+            <div class="insight" id="poolInsight"></div>
+          </article>
+        </section>
+
+      </main>
+    </div>
+  </div>
+
+  <script>
+    const legacyRows = [{"experiment": "legacy", "sweep_value": 0.01, "alpha": 0.01, "gamma": 0.0, "theoretical_threshold": 0.333333, "attacker_latency_ms": null, "honest_latency_ms": null, "pool_size": null, "relative_revenue": 0.000374, "revenue_gain": -0.009626, "profitable": false, "attacker_revenue": 37, "honest_revenue": 98992, "orphaned_blocks": 971, "blocks": 100000}, {"experiment": "legacy", "sweep_value": 0.02, "alpha": 0.02, "gamma": 0.0, "theoretical_threshold": 0.333333, "attacker_latency_ms": null, "honest_latency_ms": null, "pool_size": null, "relative_revenue": 0.001579, "revenue_gain": -0.018421, "profitable": false, "attacker_revenue": 155, "honest_revenue": 97933, "orphaned_blocks": 1912, "blocks": 100000}, {"experiment": "legacy", "sweep_value": 0.03, "alpha": 0.03, "gamma": 0.0, "theoretical_threshold": 0.333333, "attacker_latency_ms": null, "honest_latency_ms": null, "pool_size": null, "relative_revenue": 0.003414, "revenue_gain": -0.026586, "profitable": false, "attacker_revenue": 332, "honest_revenue": 96800, "orphaned_blocks": 2868, "blocks": 100000}, {"experiment": "legacy", "sweep_value": 0.04, "alpha": 0.04, "gamma": 0.0, "theoretical_threshold": 0.333333, "attacker_latency_ms": null, "honest_latency_ms": null, "pool_size": null, "relative_revenue": 0.006076, "revenue_gain": -0.033924, "profitable": false, "attacker_revenue": 585, "honest_revenue": 95722, "orphaned_blocks": 3693, "blocks": 100000}, {"experiment": "legacy", "sweep_value": 0.05, "alpha": 0.05, "gamma": 0.0, "theoretical_threshold": 0.333333, "attacker_latency_ms": null, "honest_latency_ms": null, "pool_size": null, "relative_revenue": 0.009338, "revenue_gain": -0.040662, "profitable": false, "attacker_revenue": 892, "honest_revenue": 94593, "orphaned_blocks": 4515, "blocks": 100000}, {"experiment": "legacy", "sweep_value": 0.06, "alpha": 0.06, "gamma": 0.0, "theoretical_threshold": 0.333333, "attacker_latency_ms": null, "honest_latency_ms": null, "pool_size": null, "relative_revenue": 0.013498, "revenue_gain": -0.046502, "profitable": false, "attacker_revenue": 1277, "honest_revenue": 93346, "orphaned_blocks": 5376, "blocks": 100000}, {"experiment": "legacy", "sweep_value": 0.07, "alpha": 0.07, "gamma": 0.0, "theoretical_threshold": 0.333333, "attacker_latency_ms": null, "honest_latency_ms": null, "pool_size": null, "relative_revenue": 0.01809, "revenue_gain": -0.05191, "profitable": false, "attacker_revenue": 1698, "honest_revenue": 92154, "orphaned_blocks": 6148, "blocks": 100000}, {"experiment": "legacy", "sweep_value": 0.08, "alpha": 0.08, "gamma": 0.0, "theoretical_threshold": 0.333333, "attacker_latency_ms": null, "honest_latency_ms": null, "pool_size": null, "relative_revenue": 0.024045, "revenue_gain": -0.055955, "profitable": false, "attacker_revenue": 2237, "honest_revenue": 90814, "orphaned_blocks": 6948, "blocks": 100000}, {"experiment": "legacy", "sweep_value": 0.09, "alpha": 0.09, "gamma": 0.0, "theoretical_threshold": 0.333333, "attacker_latency_ms": null, "honest_latency_ms": null, "pool_size": null, "relative_revenue": 0.028857, "revenue_gain": -0.061143, "profitable": false, "attacker_revenue": 2664, "honest_revenue": 89642, "orphaned_blocks": 7694, "blocks": 100000}, {"experiment": "legacy", "sweep_value": 0.1, "alpha": 0.1, "gamma": 0.0, "theoretical_threshold": 0.333333, "attacker_latency_ms": null, "honest_latency_ms": null, "pool_size": null, "relative_revenue": 0.035508, "revenue_gain": -0.064492, "profitable": false, "attacker_revenue": 3252, "honest_revenue": 88329, "orphaned_blocks": 8419, "blocks": 100000}, {"experiment": "legacy", "sweep_value": 0.11, "alpha": 0.11, "gamma": 0.0, "theoretical_threshold": 0.333333, "attacker_latency_ms": null, "honest_latency_ms": null, "pool_size": null, "relative_revenue": 0.042375, "revenue_gain": -0.067625, "profitable": false, "attacker_revenue": 3854, "honest_revenue": 87086, "orphaned_blocks": 9060, "blocks": 100000}, {"experiment": "legacy", "sweep_value": 0.12, "alpha": 0.12, "gamma": 0.0, "theoretical_threshold": 0.333333, "attacker_latency_ms": null, "honest_latency_ms": null, "pool_size": null, "relative_revenue": 0.050546, "revenue_gain": -0.069454, "profitable": false, "attacker_revenue": 4556, "honest_revenue": 85579, "orphaned_blocks": 9865, "blocks": 100000}, {"experiment": "legacy", "sweep_value": 0.13, "alpha": 0.13, "gamma": 0.0, "theoretical_threshold": 0.333333, "attacker_latency_ms": null, "honest_latency_ms": null, "pool_size": null, "relative_revenue": 0.058646, "revenue_gain": -0.071354, "profitable": false, "attacker_revenue": 5245, "honest_revenue": 84194, "orphaned_blocks": 10560, "blocks": 100000}, {"experiment": "legacy", "sweep_value": 0.14, "alpha": 0.14, "gamma": 0.0, "theoretical_threshold": 0.333333, "attacker_latency_ms": null, "honest_latency_ms": null, "pool_size": null, "relative_revenue": 0.067262, "revenue_gain": -0.072738, "profitable": false, "attacker_revenue": 5975, "honest_revenue": 82861, "orphaned_blocks": 11164, "blocks": 100000}, {"experiment": "legacy", "sweep_value": 0.15, "alpha": 0.15, "gamma": 0.0, "theoretical_threshold": 0.333333, "attacker_latency_ms": null, "honest_latency_ms": null, "pool_size": null, "relative_revenue": 0.076747, "revenue_gain": -0.073253, "profitable": false, "attacker_revenue": 6767, "honest_revenue": 81401, "orphaned_blocks": 11832, "blocks": 100000}, {"experiment": "legacy", "sweep_value": 0.16, "alpha": 0.16, "gamma": 0.0, "theoretical_threshold": 0.333333, "attacker_latency_ms": null, "honest_latency_ms": null, "pool_size": null, "relative_revenue": 0.085442, "revenue_gain": -0.074558, "profitable": false, "attacker_revenue": 7481, "honest_revenue": 80079, "orphaned_blocks": 12440, "blocks": 100000}, {"experiment": "legacy", "sweep_value": 0.17, "alpha": 0.17, "gamma": 0.0, "theoretical_threshold": 0.333333, "attacker_latency_ms": null, "honest_latency_ms": null, "pool_size": null, "relative_revenue": 0.09581, "revenue_gain": -0.07419, "profitable": false, "attacker_revenue": 8325, "honest_revenue": 78564, "orphaned_blocks": 13111, "blocks": 100000}, {"experiment": "legacy", "sweep_value": 0.18, "alpha": 0.18, "gamma": 0.0, "theoretical_threshold": 0.333333, "attacker_latency_ms": null, "honest_latency_ms": null, "pool_size": null, "relative_revenue": 0.10739, "revenue_gain": -0.07261, "profitable": false, "attacker_revenue": 9263, "honest_revenue": 76993, "orphaned_blocks": 13744, "blocks": 100000}, {"experiment": "legacy", "sweep_value": 0.19, "alpha": 0.19, "gamma": 0.0, "theoretical_threshold": 0.333333, "attacker_latency_ms": null, "honest_latency_ms": null, "pool_size": null, "relative_revenue": 0.11848, "revenue_gain": -0.07152, "profitable": false, "attacker_revenue": 10150, "honest_revenue": 75516, "orphaned_blocks": 14334, "blocks": 100000}, {"experiment": "legacy", "sweep_value": 0.2, "alpha": 0.2, "gamma": 0.0, "theoretical_threshold": 0.333333, "attacker_latency_ms": null, "honest_latency_ms": null, "pool_size": null, "relative_revenue": 0.129046, "revenue_gain": -0.070954, "profitable": false, "attacker_revenue": 10975, "honest_revenue": 74075, "orphaned_blocks": 14949, "blocks": 100000}, {"experiment": "legacy", "sweep_value": 0.21, "alpha": 0.21, "gamma": 0.0, "theoretical_threshold": 0.333333, "attacker_latency_ms": null, "honest_latency_ms": null, "pool_size": null, "relative_revenue": 0.141744, "revenue_gain": -0.068256, "profitable": false, "attacker_revenue": 11966, "honest_revenue": 72452, "orphaned_blocks": 15583, "blocks": 100000}, {"experiment": "legacy", "sweep_value": 0.22, "alpha": 0.22, "gamma": 0.0, "theoretical_threshold": 0.333333, "attacker_latency_ms": null, "honest_latency_ms": null, "pool_size": null, "relative_revenue": 0.154102, "revenue_gain": -0.065898, "profitable": false, "attacker_revenue": 12924, "honest_revenue": 70946, "orphaned_blocks": 16129, "blocks": 100000}, {"experiment": "legacy", "sweep_value": 0.23, "alpha": 0.23, "gamma": 0.0, "theoretical_threshold": 0.333333, "attacker_latency_ms": null, "honest_latency_ms": null, "pool_size": null, "relative_revenue": 0.166956, "revenue_gain": -0.063044, "profitable": false, "attacker_revenue": 13897, "honest_revenue": 69340, "orphaned_blocks": 16763, "blocks": 100000}, {"experiment": "legacy", "sweep_value": 0.24, "alpha": 0.24, "gamma": 0.0, "theoretical_threshold": 0.333333, "attacker_latency_ms": null, "honest_latency_ms": null, "pool_size": null, "relative_revenue": 0.181209, "revenue_gain": -0.058791, "profitable": false, "attacker_revenue": 14964, "honest_revenue": 67618, "orphaned_blocks": 17418, "blocks": 100000}, {"experiment": "legacy", "sweep_value": 0.25, "alpha": 0.25, "gamma": 0.0, "theoretical_threshold": 0.333333, "attacker_latency_ms": null, "honest_latency_ms": null, "pool_size": null, "relative_revenue": 0.194359, "revenue_gain": -0.055641, "profitable": false, "attacker_revenue": 15946, "honest_revenue": 66099, "orphaned_blocks": 17955, "blocks": 100000}, {"experiment": "legacy", "sweep_value": 0.26, "alpha": 0.26, "gamma": 0.0, "theoretical_threshold": 0.333333, "attacker_latency_ms": null, "honest_latency_ms": null, "pool_size": null, "relative_revenue": 0.209013, "revenue_gain": -0.050987, "profitable": false, "attacker_revenue": 17013, "honest_revenue": 64385, "orphaned_blocks": 18602, "blocks": 100000}, {"experiment": "legacy", "sweep_value": 0.27, "alpha": 0.27, "gamma": 0.0, "theoretical_threshold": 0.333333, "attacker_latency_ms": null, "honest_latency_ms": null, "pool_size": null, "relative_revenue": 0.224443, "revenue_gain": -0.045557, "profitable": false, "attacker_revenue": 18121, "honest_revenue": 62617, "orphaned_blocks": 19262, "blocks": 100000}, {"experiment": "legacy", "sweep_value": 0.28, "alpha": 0.28, "gamma": 0.0, "theoretical_threshold": 0.333333, "attacker_latency_ms": null, "honest_latency_ms": null, "pool_size": null, "relative_revenue": 0.240622, "revenue_gain": -0.039378, "profitable": false, "attacker_revenue": 19280, "honest_revenue": 60846, "orphaned_blocks": 19873, "blocks": 100000}, {"experiment": "legacy", "sweep_value": 0.29, "alpha": 0.29, "gamma": 0.0, "theoretical_threshold": 0.333333, "attacker_latency_ms": null, "honest_latency_ms": null, "pool_size": null, "relative_revenue": 0.257417, "revenue_gain": -0.032583, "profitable": false, "attacker_revenue": 20453, "honest_revenue": 59002, "orphaned_blocks": 20544, "blocks": 100000}, {"experiment": "legacy", "sweep_value": 0.3, "alpha": 0.3, "gamma": 0.0, "theoretical_threshold": 0.333333, "attacker_latency_ms": null, "honest_latency_ms": null, "pool_size": null, "relative_revenue": 0.27289, "revenue_gain": -0.02711, "profitable": false, "attacker_revenue": 21506, "honest_revenue": 57303, "orphaned_blocks": 21191, "blocks": 100000}, {"experiment": "legacy", "sweep_value": 0.31, "alpha": 0.31, "gamma": 0.0, "theoretical_threshold": 0.333333, "attacker_latency_ms": null, "honest_latency_ms": null, "pool_size": null, "relative_revenue": 0.291196, "revenue_gain": -0.018804, "profitable": false, "attacker_revenue": 22745, "honest_revenue": 55365, "orphaned_blocks": 21890, "blocks": 100000}, {"experiment": "legacy", "sweep_value": 0.32, "alpha": 0.32, "gamma": 0.0, "theoretical_threshold": 0.333333, "attacker_latency_ms": null, "honest_latency_ms": null, "pool_size": null, "relative_revenue": 0.308393, "revenue_gain": -0.011607, "profitable": false, "attacker_revenue": 23886, "honest_revenue": 53568, "orphaned_blocks": 22546, "blocks": 100000}, {"experiment": "legacy", "sweep_value": 0.33, "alpha": 0.33, "gamma": 0.0, "theoretical_threshold": 0.333333, "attacker_latency_ms": null, "honest_latency_ms": null, "pool_size": null, "relative_revenue": 0.324718, "revenue_gain": -0.005282, "profitable": false, "attacker_revenue": 24933, "honest_revenue": 51852, "orphaned_blocks": 23215, "blocks": 100000}, {"experiment": "legacy", "sweep_value": 0.34, "alpha": 0.34, "gamma": 0.0, "theoretical_threshold": 0.333333, "attacker_latency_ms": null, "honest_latency_ms": null, "pool_size": null, "relative_revenue": 0.348277, "revenue_gain": 0.008277, "profitable": true, "attacker_revenue": 26421, "honest_revenue": 49442, "orphaned_blocks": 24137, "blocks": 100000}, {"experiment": "legacy", "sweep_value": 0.35, "alpha": 0.35, "gamma": 0.0, "theoretical_threshold": 0.333333, "attacker_latency_ms": null, "honest_latency_ms": null, "pool_size": null, "relative_revenue": 0.365084, "revenue_gain": 0.015084, "profitable": true, "attacker_revenue": 27456, "honest_revenue": 47748, "orphaned_blocks": 24796, "blocks": 100000}, {"experiment": "legacy", "sweep_value": 0.36, "alpha": 0.36, "gamma": 0.0, "theoretical_threshold": 0.333333, "attacker_latency_ms": null, "honest_latency_ms": null, "pool_size": null, "relative_revenue": 0.388723, "revenue_gain": 0.028723, "profitable": true, "attacker_revenue": 28888, "honest_revenue": 45429, "orphaned_blocks": 25683, "blocks": 100000}, {"experiment": "legacy", "sweep_value": 0.37, "alpha": 0.37, "gamma": 0.0, "theoretical_threshold": 0.333333, "attacker_latency_ms": null, "honest_latency_ms": null, "pool_size": null, "relative_revenue": 0.409701, "revenue_gain": 0.039701, "profitable": true, "attacker_revenue": 30125, "honest_revenue": 43404, "orphaned_blocks": 26471, "blocks": 100000}, {"experiment": "legacy", "sweep_value": 0.38, "alpha": 0.38, "gamma": 0.0, "theoretical_threshold": 0.333333, "attacker_latency_ms": null, "honest_latency_ms": null, "pool_size": null, "relative_revenue": 0.433522, "revenue_gain": 0.053522, "profitable": true, "attacker_revenue": 31455, "honest_revenue": 41103, "orphaned_blocks": 27442, "blocks": 100000}, {"experiment": "legacy", "sweep_value": 0.39, "alpha": 0.39, "gamma": 0.0, "theoretical_threshold": 0.333333, "attacker_latency_ms": null, "honest_latency_ms": null, "pool_size": null, "relative_revenue": 0.460501, "revenue_gain": 0.070501, "profitable": true, "attacker_revenue": 32915, "honest_revenue": 38563, "orphaned_blocks": 28521, "blocks": 100000}, {"experiment": "legacy", "sweep_value": 0.4, "alpha": 0.4, "gamma": 0.0, "theoretical_threshold": 0.333333, "attacker_latency_ms": null, "honest_latency_ms": null, "pool_size": null, "relative_revenue": 0.482534, "revenue_gain": 0.082534, "profitable": true, "attacker_revenue": 34027, "honest_revenue": 36492, "orphaned_blocks": 29480, "blocks": 100000}, {"experiment": "legacy", "sweep_value": 0.41, "alpha": 0.41, "gamma": 0.0, "theoretical_threshold": 0.333333, "attacker_latency_ms": null, "honest_latency_ms": null, "pool_size": null, "relative_revenue": 0.514618, "revenue_gain": 0.104618, "profitable": true, "attacker_revenue": 35635, "honest_revenue": 33612, "orphaned_blocks": 30754, "blocks": 100000}, {"experiment": "legacy", "sweep_value": 0.42, "alpha": 0.42, "gamma": 0.0, "theoretical_threshold": 0.333333, "attacker_latency_ms": null, "honest_latency_ms": null, "pool_size": null, "relative_revenue": 0.542612, "revenue_gain": 0.122612, "profitable": true, "attacker_revenue": 36903, "honest_revenue": 31109, "orphaned_blocks": 31988, "blocks": 100000}, {"experiment": "legacy", "sweep_value": 0.43, "alpha": 0.43, "gamma": 0.0, "theoretical_threshold": 0.333333, "attacker_latency_ms": null, "honest_latency_ms": null, "pool_size": null, "relative_revenue": 0.577169, "revenue_gain": 0.147169, "profitable": true, "attacker_revenue": 38421, "honest_revenue": 28154, "orphaned_blocks": 33426, "blocks": 100000}, {"experiment": "legacy", "sweep_value": 0.44, "alpha": 0.44, "gamma": 0.0, "theoretical_threshold": 0.333333, "attacker_latency_ms": null, "honest_latency_ms": null, "pool_size": null, "relative_revenue": 0.612194, "revenue_gain": 0.172194, "profitable": true, "attacker_revenue": 39872, "honest_revenue": 25260, "orphaned_blocks": 34867, "blocks": 100000}, {"experiment": "legacy", "sweep_value": 0.45, "alpha": 0.45, "gamma": 0.0, "theoretical_threshold": 0.333333, "attacker_latency_ms": null, "honest_latency_ms": null, "pool_size": null, "relative_revenue": 0.651813, "revenue_gain": 0.201813, "profitable": true, "attacker_revenue": 41358, "honest_revenue": 22095, "orphaned_blocks": 36546, "blocks": 100000}, {"experiment": "legacy", "sweep_value": 0.46, "alpha": 0.46, "gamma": 0.0, "theoretical_threshold": 0.333333, "attacker_latency_ms": null, "honest_latency_ms": null, "pool_size": null, "relative_revenue": 0.69589, "revenue_gain": 0.23589, "profitable": true, "attacker_revenue": 42878, "honest_revenue": 18741, "orphaned_blocks": 38381, "blocks": 100000}, {"experiment": "legacy", "sweep_value": 0.47, "alpha": 0.47, "gamma": 0.0, "theoretical_threshold": 0.333333, "attacker_latency_ms": null, "honest_latency_ms": null, "pool_size": null, "relative_revenue": 0.755742, "revenue_gain": 0.285742, "profitable": true, "attacker_revenue": 44698, "honest_revenue": 14453, "orphaned_blocks": 40849, "blocks": 100000}, {"experiment": "legacy", "sweep_value": 0.48, "alpha": 0.48, "gamma": 0.0, "theoretical_threshold": 0.333333, "attacker_latency_ms": null, "honest_latency_ms": null, "pool_size": null, "relative_revenue": 0.818476, "revenue_gain": 0.338476, "profitable": true, "attacker_revenue": 46304, "honest_revenue": 10272, "orphaned_blocks": 43423, "blocks": 100000}, {"experiment": "legacy", "sweep_value": 0.49, "alpha": 0.49, "gamma": 0.0, "theoretical_threshold": 0.333333, "attacker_latency_ms": null, "honest_latency_ms": null, "pool_size": null, "relative_revenue": 0.890972, "revenue_gain": 0.400972, "profitable": true, "attacker_revenue": 47952, "honest_revenue": 5882, "orphaned_blocks": 46166, "blocks": 100000}, {"experiment": "legacy", "sweep_value": 0.01, "alpha": 0.01, "gamma": 0.25, "theoretical_threshold": 0.3, "attacker_latency_ms": null, "honest_latency_ms": null, "pool_size": null, "relative_revenue": 0.002783, "revenue_gain": -0.007217, "profitable": false, "attacker_revenue": 276, "honest_revenue": 98766, "orphaned_blocks": 958, "blocks": 100000}, {"experiment": "legacy", "sweep_value": 0.02, "alpha": 0.02, "gamma": 0.25, "theoretical_threshold": 0.3, "attacker_latency_ms": null, "honest_latency_ms": null, "pool_size": null, "relative_revenue": 0.006497, "revenue_gain": -0.013503, "profitable": false, "attacker_revenue": 637, "honest_revenue": 97442, "orphaned_blocks": 1921, "blocks": 100000}, {"experiment": "legacy", "sweep_value": 0.03, "alpha": 0.03, "gamma": 0.25, "theoretical_threshold": 0.3, "attacker_latency_ms": null, "honest_latency_ms": null, "pool_size": null, "relative_revenue": 0.010394, "revenue_gain": -0.019606, "profitable": false, "attacker_revenue": 1010, "honest_revenue": 96158, "orphaned_blocks": 2832, "blocks": 100000}, {"experiment": "legacy", "sweep_value": 0.04, "alpha": 0.04, "gamma": 0.25, "theoretical_threshold": 0.3, "attacker_latency_ms": null, "honest_latency_ms": null, "pool_size": null, "relative_revenue": 0.014959, "revenue_gain": -0.025041, "profitable": false, "attacker_revenue": 1440, "honest_revenue": 94837, "orphaned_blocks": 3722, "blocks": 100000}, {"experiment": "legacy", "sweep_value": 0.05, "alpha": 0.05, "gamma": 0.25, "theoretical_threshold": 0.3, "attacker_latency_ms": null, "honest_latency_ms": null, "pool_size": null, "relative_revenue": 0.02026, "revenue_gain": -0.02974, "profitable": false, "attacker_revenue": 1933, "honest_revenue": 93496, "orphaned_blocks": 4570, "blocks": 100000}, {"experiment": "legacy", "sweep_value": 0.06, "alpha": 0.06, "gamma": 0.25, "theoretical_threshold": 0.3, "attacker_latency_ms": null, "honest_latency_ms": null, "pool_size": null, "relative_revenue": 0.025682, "revenue_gain": -0.034318, "profitable": false, "attacker_revenue": 2430, "honest_revenue": 92193, "orphaned_blocks": 5377, "blocks": 100000}, {"experiment": "legacy", "sweep_value": 0.07, "alpha": 0.07, "gamma": 0.25, "theoretical_threshold": 0.3, "attacker_latency_ms": null, "honest_latency_ms": null, "pool_size": null, "relative_revenue": 0.031754, "revenue_gain": -0.038246, "profitable": false, "attacker_revenue": 2980, "honest_revenue": 90862, "orphaned_blocks": 6158, "blocks": 100000}, {"experiment": "legacy", "sweep_value": 0.08, "alpha": 0.08, "gamma": 0.25, "theoretical_threshold": 0.3, "attacker_latency_ms": null, "honest_latency_ms": null, "pool_size": null, "relative_revenue": 0.038859, "revenue_gain": -0.041141, "profitable": false, "attacker_revenue": 3617, "honest_revenue": 89460, "orphaned_blocks": 6924, "blocks": 100000}, {"experiment": "legacy", "sweep_value": 0.09, "alpha": 0.09, "gamma": 0.25, "theoretical_threshold": 0.3, "attacker_latency_ms": null, "honest_latency_ms": null, "pool_size": null, "relative_revenue": 0.045943, "revenue_gain": -0.044057, "profitable": false, "attacker_revenue": 4241, "honest_revenue": 88062, "orphaned_blocks": 7697, "blocks": 100000}, {"experiment": "legacy", "sweep_value": 0.1, "alpha": 0.1, "gamma": 0.25, "theoretical_threshold": 0.3, "attacker_latency_ms": null, "honest_latency_ms": null, "pool_size": null, "relative_revenue": 0.054541, "revenue_gain": -0.045459, "profitable": false, "attacker_revenue": 4994, "honest_revenue": 86565, "orphaned_blocks": 8442, "blocks": 100000}, {"experiment": "legacy", "sweep_value": 0.11, "alpha": 0.11, "gamma": 0.25, "theoretical_threshold": 0.3, "attacker_latency_ms": null, "honest_latency_ms": null, "pool_size": null, "relative_revenue": 0.062363, "revenue_gain": -0.047637, "profitable": false, "attacker_revenue": 5667, "honest_revenue": 85205, "orphaned_blocks": 9128, "blocks": 100000}, {"experiment": "legacy", "sweep_value": 0.12, "alpha": 0.12, "gamma": 0.25, "theoretical_threshold": 0.3, "attacker_latency_ms": null, "honest_latency_ms": null, "pool_size": null, "relative_revenue": 0.070531, "revenue_gain": -0.049469, "profitable": false, "attacker_revenue": 6363, "honest_revenue": 83857, "orphaned_blocks": 9780, "blocks": 100000}, {"experiment": "legacy", "sweep_value": 0.13, "alpha": 0.13, "gamma": 0.25, "theoretical_threshold": 0.3, "attacker_latency_ms": null, "honest_latency_ms": null, "pool_size": null, "relative_revenue": 0.080073, "revenue_gain": -0.049927, "profitable": false, "attacker_revenue": 7166, "honest_revenue": 82330, "orphaned_blocks": 10503, "blocks": 100000}, {"experiment": "legacy", "sweep_value": 0.14, "alpha": 0.14, "gamma": 0.25, "theoretical_threshold": 0.3, "attacker_latency_ms": null, "honest_latency_ms": null, "pool_size": null, "relative_revenue": 0.089361, "revenue_gain": -0.050639, "profitable": false, "attacker_revenue": 7939, "honest_revenue": 80906, "orphaned_blocks": 11155, "blocks": 100000}, {"experiment": "legacy", "sweep_value": 0.15, "alpha": 0.15, "gamma": 0.25, "theoretical_threshold": 0.3, "attacker_latency_ms": null, "honest_latency_ms": null, "pool_size": null, "relative_revenue": 0.099224, "revenue_gain": -0.050776, "profitable": false, "attacker_revenue": 8753, "honest_revenue": 79461, "orphaned_blocks": 11786, "blocks": 100000}, {"experiment": "legacy", "sweep_value": 0.16, "alpha": 0.16, "gamma": 0.25, "theoretical_threshold": 0.3, "attacker_latency_ms": null, "honest_latency_ms": null, "pool_size": null, "relative_revenue": 0.110677, "revenue_gain": -0.049323, "profitable": false, "attacker_revenue": 9686, "honest_revenue": 77829, "orphaned_blocks": 12485, "blocks": 100000}, {"experiment": "legacy", "sweep_value": 0.17, "alpha": 0.17, "gamma": 0.25, "theoretical_threshold": 0.3, "attacker_latency_ms": null, "honest_latency_ms": null, "pool_size": null, "relative_revenue": 0.120852, "revenue_gain": -0.049148, "profitable": false, "attacker_revenue": 10502, "honest_revenue": 76401, "orphaned_blocks": 13096, "blocks": 100000}, {"experiment": "legacy", "sweep_value": 0.18, "alpha": 0.18, "gamma": 0.25, "theoretical_threshold": 0.3, "attacker_latency_ms": null, "honest_latency_ms": null, "pool_size": null, "relative_revenue": 0.13226, "revenue_gain": -0.04774, "profitable": false, "attacker_revenue": 11412, "honest_revenue": 74870, "orphaned_blocks": 13718, "blocks": 100000}, {"experiment": "legacy", "sweep_value": 0.19, "alpha": 0.19, "gamma": 0.25, "theoretical_threshold": 0.3, "attacker_latency_ms": null, "honest_latency_ms": null, "pool_size": null, "relative_revenue": 0.143797, "revenue_gain": -0.046203, "profitable": false, "attacker_revenue": 12320, "honest_revenue": 73354, "orphaned_blocks": 14327, "blocks": 100000}, {"experiment": "legacy", "sweep_value": 0.2, "alpha": 0.2, "gamma": 0.25, "theoretical_threshold": 0.3, "attacker_latency_ms": null, "honest_latency_ms": null, "pool_size": null, "relative_revenue": 0.15636, "revenue_gain": -0.04364, "profitable": false, "attacker_revenue": 13296, "honest_revenue": 71736, "orphaned_blocks": 14969, "blocks": 100000}, {"experiment": "legacy", "sweep_value": 0.21, "alpha": 0.21, "gamma": 0.25, "theoretical_threshold": 0.3, "attacker_latency_ms": null, "honest_latency_ms": null, "pool_size": null, "relative_revenue": 0.167877, "revenue_gain": -0.042123, "profitable": false, "attacker_revenue": 14177, "honest_revenue": 70272, "orphaned_blocks": 15550, "blocks": 100000}, {"experiment": "legacy", "sweep_value": 0.22, "alpha": 0.22, "gamma": 0.25, "theoretical_threshold": 0.3, "attacker_latency_ms": null, "honest_latency_ms": null, "pool_size": null, "relative_revenue": 0.18162, "revenue_gain": -0.03838, "profitable": false, "attacker_revenue": 15233, "honest_revenue": 68639, "orphaned_blocks": 16128, "blocks": 100000}, {"experiment": "legacy", "sweep_value": 0.23, "alpha": 0.23, "gamma": 0.25, "theoretical_threshold": 0.3, "attacker_latency_ms": null, "honest_latency_ms": null, "pool_size": null, "relative_revenue": 0.1944, "revenue_gain": -0.0356, "profitable": false, "attacker_revenue": 16180, "honest_revenue": 67052, "orphaned_blocks": 16768, "blocks": 100000}, {"experiment": "legacy", "sweep_value": 0.24, "alpha": 0.24, "gamma": 0.25, "theoretical_threshold": 0.3, "attacker_latency_ms": null, "honest_latency_ms": null, "pool_size": null, "relative_revenue": 0.208171, "revenue_gain": -0.031829, "profitable": false, "attacker_revenue": 17197, "honest_revenue": 65413, "orphaned_blocks": 17390, "blocks": 100000}, {"experiment": "legacy", "sweep_value": 0.25, "alpha": 0.25, "gamma": 0.25, "theoretical_threshold": 0.3, "attacker_latency_ms": null, "honest_latency_ms": null, "pool_size": null, "relative_revenue": 0.222434, "revenue_gain": -0.027566, "profitable": false, "attacker_revenue": 18244, "honest_revenue": 63775, "orphaned_blocks": 17981, "blocks": 100000}, {"experiment": "legacy", "sweep_value": 0.26, "alpha": 0.26, "gamma": 0.25, "theoretical_threshold": 0.3, "attacker_latency_ms": null, "honest_latency_ms": null, "pool_size": null, "relative_revenue": 0.237456, "revenue_gain": -0.022544, "profitable": false, "attacker_revenue": 19318, "honest_revenue": 62036, "orphaned_blocks": 18647, "blocks": 100000}, {"experiment": "legacy", "sweep_value": 0.27, "alpha": 0.27, "gamma": 0.25, "theoretical_threshold": 0.3, "attacker_latency_ms": null, "honest_latency_ms": null, "pool_size": null, "relative_revenue": 0.252497, "revenue_gain": -0.017503, "profitable": false, "attacker_revenue": 20386, "honest_revenue": 60352, "orphaned_blocks": 19262, "blocks": 100000}, {"experiment": "legacy", "sweep_value": 0.28, "alpha": 0.28, "gamma": 0.25, "theoretical_threshold": 0.3, "attacker_latency_ms": null, "honest_latency_ms": null, "pool_size": null, "relative_revenue": 0.26776, "revenue_gain": -0.01224, "profitable": false, "attacker_revenue": 21453, "honest_revenue": 58669, "orphaned_blocks": 19877, "blocks": 100000}, {"experiment": "legacy", "sweep_value": 0.29, "alpha": 0.29, "gamma": 0.25, "theoretical_threshold": 0.3, "attacker_latency_ms": null, "honest_latency_ms": null, "pool_size": null, "relative_revenue": 0.282489, "revenue_gain": -0.007511, "profitable": false, "attacker_revenue": 22466, "honest_revenue": 57064, "orphaned_blocks": 20470, "blocks": 100000}, {"experiment": "legacy", "sweep_value": 0.3, "alpha": 0.3, "gamma": 0.25, "theoretical_threshold": 0.3, "attacker_latency_ms": null, "honest_latency_ms": null, "pool_size": null, "relative_revenue": 0.298663, "revenue_gain": -0.001337, "profitable": false, "attacker_revenue": 23560, "honest_revenue": 55326, "orphaned_blocks": 21114, "blocks": 100000}, {"experiment": "legacy", "sweep_value": 0.31, "alpha": 0.31, "gamma": 0.25, "theoretical_threshold": 0.3, "attacker_latency_ms": null, "honest_latency_ms": null, "pool_size": null, "relative_revenue": 0.316746, "revenue_gain": 0.006746, "profitable": true, "attacker_revenue": 24761, "honest_revenue": 53414, "orphaned_blocks": 21825, "blocks": 100000}, {"experiment": "legacy", "sweep_value": 0.32, "alpha": 0.32, "gamma": 0.25, "theoretical_threshold": 0.3, "attacker_latency_ms": null, "honest_latency_ms": null, "pool_size": null, "relative_revenue": 0.335216, "revenue_gain": 0.015216, "profitable": true, "attacker_revenue": 25956, "honest_revenue": 51476, "orphaned_blocks": 22567, "blocks": 100000}, {"experiment": "legacy", "sweep_value": 0.33, "alpha": 0.33, "gamma": 0.25, "theoretical_threshold": 0.3, "attacker_latency_ms": null, "honest_latency_ms": null, "pool_size": null, "relative_revenue": 0.351677, "revenue_gain": 0.021677, "profitable": true, "attacker_revenue": 26990, "honest_revenue": 49758, "orphaned_blocks": 23252, "blocks": 100000}, {"experiment": "legacy", "sweep_value": 0.34, "alpha": 0.34, "gamma": 0.25, "theoretical_threshold": 0.3, "attacker_latency_ms": null, "honest_latency_ms": null, "pool_size": null, "relative_revenue": 0.371089, "revenue_gain": 0.031089, "profitable": true, "attacker_revenue": 28195, "honest_revenue": 47785, "orphaned_blocks": 24020, "blocks": 100000}, {"experiment": "legacy", "sweep_value": 0.35, "alpha": 0.35, "gamma": 0.25, "theoretical_threshold": 0.3, "attacker_latency_ms": null, "honest_latency_ms": null, "pool_size": null, "relative_revenue": 0.391056, "revenue_gain": 0.041056, "profitable": true, "attacker_revenue": 29410, "honest_revenue": 45798, "orphaned_blocks": 24792, "blocks": 100000}, {"experiment": "legacy", "sweep_value": 0.36, "alpha": 0.36, "gamma": 0.25, "theoretical_threshold": 0.3, "attacker_latency_ms": null, "honest_latency_ms": null, "pool_size": null, "relative_revenue": 0.413121, "revenue_gain": 0.053121, "profitable": true, "attacker_revenue": 30676, "honest_revenue": 43579, "orphaned_blocks": 25744, "blocks": 100000}, {"experiment": "legacy", "sweep_value": 0.37, "alpha": 0.37, "gamma": 0.25, "theoretical_threshold": 0.3, "attacker_latency_ms": null, "honest_latency_ms": null, "pool_size": null, "relative_revenue": 0.432352, "revenue_gain": 0.062352, "profitable": true, "attacker_revenue": 31761, "honest_revenue": 41701, "orphaned_blocks": 26538, "blocks": 100000}, {"experiment": "legacy", "sweep_value": 0.38, "alpha": 0.38, "gamma": 0.25, "theoretical_threshold": 0.3, "attacker_latency_ms": null, "honest_latency_ms": null, "pool_size": null, "relative_revenue": 0.454638, "revenue_gain": 0.074638, "profitable": true, "attacker_revenue": 33020, "honest_revenue": 39610, "orphaned_blocks": 27370, "blocks": 100000}, {"experiment": "legacy", "sweep_value": 0.39, "alpha": 0.39, "gamma": 0.25, "theoretical_threshold": 0.3, "attacker_latency_ms": null, "honest_latency_ms": null, "pool_size": null, "relative_revenue": 0.479327, "revenue_gain": 0.089327, "profitable": true, "attacker_revenue": 34294, "honest_revenue": 37253, "orphaned_blocks": 28452, "blocks": 100000}, {"experiment": "legacy", "sweep_value": 0.4, "alpha": 0.4, "gamma": 0.25, "theoretical_threshold": 0.3, "attacker_latency_ms": null, "honest_latency_ms": null, "pool_size": null, "relative_revenue": 0.504448, "revenue_gain": 0.104448, "profitable": true, "attacker_revenue": 35550, "honest_revenue": 34925, "orphaned_blocks": 29525, "blocks": 100000}, {"experiment": "legacy", "sweep_value": 0.41, "alpha": 0.41, "gamma": 0.25, "theoretical_threshold": 0.3, "attacker_latency_ms": null, "honest_latency_ms": null, "pool_size": null, "relative_revenue": 0.528944, "revenue_gain": 0.118944, "profitable": true, "attacker_revenue": 36758, "honest_revenue": 32735, "orphaned_blocks": 30507, "blocks": 100000}, {"experiment": "legacy", "sweep_value": 0.42, "alpha": 0.42, "gamma": 0.25, "theoretical_threshold": 0.3, "attacker_latency_ms": null, "honest_latency_ms": null, "pool_size": null, "relative_revenue": 0.562665, "revenue_gain": 0.142665, "profitable": true, "attacker_revenue": 38257, "honest_revenue": 29736, "orphaned_blocks": 32007, "blocks": 100000}, {"experiment": "legacy", "sweep_value": 0.43, "alpha": 0.43, "gamma": 0.25, "theoretical_threshold": 0.3, "attacker_latency_ms": null, "honest_latency_ms": null, "pool_size": null, "relative_revenue": 0.59286, "revenue_gain": 0.16286, "profitable": true, "attacker_revenue": 39524, "honest_revenue": 27144, "orphaned_blocks": 33332, "blocks": 100000}, {"experiment": "legacy", "sweep_value": 0.44, "alpha": 0.44, "gamma": 0.25, "theoretical_threshold": 0.3, "attacker_latency_ms": null, "honest_latency_ms": null, "pool_size": null, "relative_revenue": 0.628064, "revenue_gain": 0.188064, "profitable": true, "attacker_revenue": 40882, "honest_revenue": 24213, "orphaned_blocks": 34906, "blocks": 100000}, {"experiment": "legacy", "sweep_value": 0.45, "alpha": 0.45, "gamma": 0.25, "theoretical_threshold": 0.3, "attacker_latency_ms": null, "honest_latency_ms": null, "pool_size": null, "relative_revenue": 0.668359, "revenue_gain": 0.218359, "profitable": true, "attacker_revenue": 42318, "honest_revenue": 21000, "orphaned_blocks": 36682, "blocks": 100000}, {"experiment": "legacy", "sweep_value": 0.46, "alpha": 0.46, "gamma": 0.25, "theoretical_threshold": 0.3, "attacker_latency_ms": null, "honest_latency_ms": null, "pool_size": null, "relative_revenue": 0.710959, "revenue_gain": 0.250959, "profitable": true, "attacker_revenue": 43722, "honest_revenue": 17781, "orphaned_blocks": 38498, "blocks": 100000}, {"experiment": "legacy", "sweep_value": 0.47, "alpha": 0.47, "gamma": 0.25, "theoretical_threshold": 0.3, "attacker_latency_ms": null, "honest_latency_ms": null, "pool_size": null, "relative_revenue": 0.763086, "revenue_gain": 0.293086, "profitable": true, "attacker_revenue": 45223, "honest_revenue": 14043, "orphaned_blocks": 40735, "blocks": 100000}, {"experiment": "legacy", "sweep_value": 0.48, "alpha": 0.48, "gamma": 0.25, "theoretical_threshold": 0.3, "attacker_latency_ms": null, "honest_latency_ms": null, "pool_size": null, "relative_revenue": 0.823794, "revenue_gain": 0.343794, "profitable": true, "attacker_revenue": 46691, "honest_revenue": 9996, "orphaned_blocks": 43314, "blocks": 100000}, {"experiment": "legacy", "sweep_value": 0.49, "alpha": 0.49, "gamma": 0.25, "theoretical_threshold": 0.3, "attacker_latency_ms": null, "honest_latency_ms": null, "pool_size": null, "relative_revenue": 0.89722, "revenue_gain": 0.40722, "profitable": true, "attacker_revenue": 48238, "honest_revenue": 5531, "orphaned_blocks": 46230, "blocks": 100000}, {"experiment": "legacy", "sweep_value": 0.01, "alpha": 0.01, "gamma": 0.5, "theoretical_threshold": 0.25, "attacker_latency_ms": null, "honest_latency_ms": null, "pool_size": null, "relative_revenue": 0.005325, "revenue_gain": -0.004675, "profitable": false, "attacker_revenue": 527, "honest_revenue": 98488, "orphaned_blocks": 984, "blocks": 100000}, {"experiment": "legacy", "sweep_value": 0.02, "alpha": 0.02, "gamma": 0.5, "theoretical_threshold": 0.25, "attacker_latency_ms": null, "honest_latency_ms": null, "pool_size": null, "relative_revenue": 0.010868, "revenue_gain": -0.009132, "profitable": false, "attacker_revenue": 1066, "honest_revenue": 97023, "orphaned_blocks": 1911, "blocks": 100000}, {"experiment": "legacy", "sweep_value": 0.03, "alpha": 0.03, "gamma": 0.5, "theoretical_threshold": 0.25, "attacker_latency_ms": null, "honest_latency_ms": null, "pool_size": null, "relative_revenue": 0.01729, "revenue_gain": -0.01271, "profitable": false, "attacker_revenue": 1680, "honest_revenue": 95470, "orphaned_blocks": 2850, "blocks": 100000}, {"experiment": "legacy", "sweep_value": 0.04, "alpha": 0.04, "gamma": 0.5, "theoretical_threshold": 0.25, "attacker_latency_ms": null, "honest_latency_ms": null, "pool_size": null, "relative_revenue": 0.023886, "revenue_gain": -0.016114, "profitable": false, "attacker_revenue": 2300, "honest_revenue": 93971, "orphaned_blocks": 3729, "blocks": 100000}, {"experiment": "legacy", "sweep_value": 0.05, "alpha": 0.05, "gamma": 0.5, "theoretical_threshold": 0.25, "attacker_latency_ms": null, "honest_latency_ms": null, "pool_size": null, "relative_revenue": 0.030979, "revenue_gain": -0.019021, "profitable": false, "attacker_revenue": 2956, "honest_revenue": 92468, "orphaned_blocks": 4576, "blocks": 100000}, {"experiment": "legacy", "sweep_value": 0.06, "alpha": 0.06, "gamma": 0.5, "theoretical_threshold": 0.25, "attacker_latency_ms": null, "honest_latency_ms": null, "pool_size": null, "relative_revenue": 0.038592, "revenue_gain": -0.021408, "profitable": false, "attacker_revenue": 3651, "honest_revenue": 90963, "orphaned_blocks": 5385, "blocks": 100000}, {"experiment": "legacy", "sweep_value": 0.07, "alpha": 0.07, "gamma": 0.5, "theoretical_threshold": 0.25, "attacker_latency_ms": null, "honest_latency_ms": null, "pool_size": null, "relative_revenue": 0.046082, "revenue_gain": -0.023918, "profitable": false, "attacker_revenue": 4326, "honest_revenue": 89550, "orphaned_blocks": 6124, "blocks": 100000}, {"experiment": "legacy", "sweep_value": 0.08, "alpha": 0.08, "gamma": 0.5, "theoretical_threshold": 0.25, "attacker_latency_ms": null, "honest_latency_ms": null, "pool_size": null, "relative_revenue": 0.055347, "revenue_gain": -0.024653, "profitable": false, "attacker_revenue": 5150, "honest_revenue": 87906, "orphaned_blocks": 6944, "blocks": 100000}, {"experiment": "legacy", "sweep_value": 0.09, "alpha": 0.09, "gamma": 0.5, "theoretical_threshold": 0.25, "attacker_latency_ms": null, "honest_latency_ms": null, "pool_size": null, "relative_revenue": 0.063487, "revenue_gain": -0.026513, "profitable": false, "attacker_revenue": 5861, "honest_revenue": 86454, "orphaned_blocks": 7686, "blocks": 100000}, {"experiment": "legacy", "sweep_value": 0.1, "alpha": 0.1, "gamma": 0.5, "theoretical_threshold": 0.25, "attacker_latency_ms": null, "honest_latency_ms": null, "pool_size": null, "relative_revenue": 0.073309, "revenue_gain": -0.026691, "profitable": false, "attacker_revenue": 6712, "honest_revenue": 84843, "orphaned_blocks": 8445, "blocks": 100000}, {"experiment": "legacy", "sweep_value": 0.11, "alpha": 0.11, "gamma": 0.5, "theoretical_threshold": 0.25, "attacker_latency_ms": null, "honest_latency_ms": null, "pool_size": null, "relative_revenue": 0.081848, "revenue_gain": -0.028152, "profitable": false, "attacker_revenue": 7438, "honest_revenue": 83440, "orphaned_blocks": 9121, "blocks": 100000}, {"experiment": "legacy", "sweep_value": 0.12, "alpha": 0.12, "gamma": 0.5, "theoretical_threshold": 0.25, "attacker_latency_ms": null, "honest_latency_ms": null, "pool_size": null, "relative_revenue": 0.091836, "revenue_gain": -0.028164, "profitable": false, "attacker_revenue": 8285, "honest_revenue": 81926, "orphaned_blocks": 9789, "blocks": 100000}, {"experiment": "legacy", "sweep_value": 0.13, "alpha": 0.13, "gamma": 0.5, "theoretical_threshold": 0.25, "attacker_latency_ms": null, "honest_latency_ms": null, "pool_size": null, "relative_revenue": 0.102861, "revenue_gain": -0.027139, "profitable": false, "attacker_revenue": 9203, "honest_revenue": 80267, "orphaned_blocks": 10530, "blocks": 100000}, {"experiment": "legacy", "sweep_value": 0.14, "alpha": 0.14, "gamma": 0.5, "theoretical_threshold": 0.25, "attacker_latency_ms": null, "honest_latency_ms": null, "pool_size": null, "relative_revenue": 0.112644, "revenue_gain": -0.027356, "profitable": false, "attacker_revenue": 10004, "honest_revenue": 78812, "orphaned_blocks": 11183, "blocks": 100000}, {"experiment": "legacy", "sweep_value": 0.15, "alpha": 0.15, "gamma": 0.5, "theoretical_threshold": 0.25, "attacker_latency_ms": null, "honest_latency_ms": null, "pool_size": null, "relative_revenue": 0.122587, "revenue_gain": -0.027413, "profitable": false, "attacker_revenue": 10809, "honest_revenue": 77367, "orphaned_blocks": 11824, "blocks": 100000}, {"experiment": "legacy", "sweep_value": 0.16, "alpha": 0.16, "gamma": 0.5, "theoretical_threshold": 0.25, "attacker_latency_ms": null, "honest_latency_ms": null, "pool_size": null, "relative_revenue": 0.133865, "revenue_gain": -0.026135, "profitable": false, "attacker_revenue": 11721, "honest_revenue": 75837, "orphaned_blocks": 12442, "blocks": 100000}, {"experiment": "legacy", "sweep_value": 0.17, "alpha": 0.17, "gamma": 0.5, "theoretical_threshold": 0.25, "attacker_latency_ms": null, "honest_latency_ms": null, "pool_size": null, "relative_revenue": 0.146438, "revenue_gain": -0.023562, "profitable": false, "attacker_revenue": 12723, "honest_revenue": 74163, "orphaned_blocks": 13114, "blocks": 100000}, {"experiment": "legacy", "sweep_value": 0.18, "alpha": 0.18, "gamma": 0.5, "theoretical_threshold": 0.25, "attacker_latency_ms": null, "honest_latency_ms": null, "pool_size": null, "relative_revenue": 0.157362, "revenue_gain": -0.022638, "profitable": false, "attacker_revenue": 13575, "honest_revenue": 72692, "orphaned_blocks": 13733, "blocks": 100000}, {"experiment": "legacy", "sweep_value": 0.19, "alpha": 0.19, "gamma": 0.5, "theoretical_threshold": 0.25, "attacker_latency_ms": null, "honest_latency_ms": null, "pool_size": null, "relative_revenue": 0.169561, "revenue_gain": -0.020439, "profitable": false, "attacker_revenue": 14531, "honest_revenue": 71168, "orphaned_blocks": 14300, "blocks": 100000}, {"experiment": "legacy", "sweep_value": 0.2, "alpha": 0.2, "gamma": 0.5, "theoretical_threshold": 0.25, "attacker_latency_ms": null, "honest_latency_ms": null, "pool_size": null, "relative_revenue": 0.182263, "revenue_gain": -0.017737, "profitable": false, "attacker_revenue": 15505, "honest_revenue": 69563, "orphaned_blocks": 14932, "blocks": 100000}, {"experiment": "legacy", "sweep_value": 0.21, "alpha": 0.21, "gamma": 0.5, "theoretical_threshold": 0.25, "attacker_latency_ms": null, "honest_latency_ms": null, "pool_size": null, "relative_revenue": 0.195401, "revenue_gain": -0.014599, "profitable": false, "attacker_revenue": 16506, "honest_revenue": 67965, "orphaned_blocks": 15529, "blocks": 100000}, {"experiment": "legacy", "sweep_value": 0.22, "alpha": 0.22, "gamma": 0.5, "theoretical_threshold": 0.25, "attacker_latency_ms": null, "honest_latency_ms": null, "pool_size": null, "relative_revenue": 0.208286, "revenue_gain": -0.011714, "profitable": false, "attacker_revenue": 17463, "honest_revenue": 66378, "orphaned_blocks": 16160, "blocks": 100000}, {"experiment": "legacy", "sweep_value": 0.23, "alpha": 0.23, "gamma": 0.5, "theoretical_threshold": 0.25, "attacker_latency_ms": null, "honest_latency_ms": null, "pool_size": null, "relative_revenue": 0.222285, "revenue_gain": -0.007715, "profitable": false, "attacker_revenue": 18499, "honest_revenue": 64723, "orphaned_blocks": 16778, "blocks": 100000}, {"experiment": "legacy", "sweep_value": 0.24, "alpha": 0.24, "gamma": 0.5, "theoretical_threshold": 0.25, "attacker_latency_ms": null, "honest_latency_ms": null, "pool_size": null, "relative_revenue": 0.235725, "revenue_gain": -0.004275, "profitable": false, "attacker_revenue": 19481, "honest_revenue": 63163, "orphaned_blocks": 17356, "blocks": 100000}, {"experiment": "legacy", "sweep_value": 0.25, "alpha": 0.25, "gamma": 0.5, "theoretical_threshold": 0.25, "attacker_latency_ms": null, "honest_latency_ms": null, "pool_size": null, "relative_revenue": 0.250303, "revenue_gain": 0.000303, "profitable": true, "attacker_revenue": 20526, "honest_revenue": 61479, "orphaned_blocks": 17995, "blocks": 100000}, {"experiment": "legacy", "sweep_value": 0.26, "alpha": 0.26, "gamma": 0.5, "theoretical_threshold": 0.25, "attacker_latency_ms": null, "honest_latency_ms": null, "pool_size": null, "relative_revenue": 0.265048, "revenue_gain": 0.005048, "profitable": true, "attacker_revenue": 21564, "honest_revenue": 59795, "orphaned_blocks": 18641, "blocks": 100000}, {"experiment": "legacy", "sweep_value": 0.27, "alpha": 0.27, "gamma": 0.5, "theoretical_threshold": 0.25, "attacker_latency_ms": null, "honest_latency_ms": null, "pool_size": null, "relative_revenue": 0.278341, "revenue_gain": 0.008341, "profitable": true, "attacker_revenue": 22495, "honest_revenue": 58324, "orphaned_blocks": 19181, "blocks": 100000}, {"experiment": "legacy", "sweep_value": 0.28, "alpha": 0.28, "gamma": 0.5, "theoretical_threshold": 0.25, "attacker_latency_ms": null, "honest_latency_ms": null, "pool_size": null, "relative_revenue": 0.294949, "revenue_gain": 0.014949, "profitable": true, "attacker_revenue": 23639, "honest_revenue": 56508, "orphaned_blocks": 19852, "blocks": 100000}, {"experiment": "legacy", "sweep_value": 0.29, "alpha": 0.29, "gamma": 0.5, "theoretical_threshold": 0.25, "attacker_latency_ms": null, "honest_latency_ms": null, "pool_size": null, "relative_revenue": 0.311371, "revenue_gain": 0.021371, "profitable": true, "attacker_revenue": 24731, "honest_revenue": 54696, "orphaned_blocks": 20573, "blocks": 100000}, {"experiment": "legacy", "sweep_value": 0.3, "alpha": 0.3, "gamma": 0.5, "theoretical_threshold": 0.25, "attacker_latency_ms": null, "honest_latency_ms": null, "pool_size": null, "relative_revenue": 0.326982, "revenue_gain": 0.026982, "profitable": true, "attacker_revenue": 25787, "honest_revenue": 53078, "orphaned_blocks": 21135, "blocks": 100000}, {"experiment": "legacy", "sweep_value": 0.31, "alpha": 0.31, "gamma": 0.5, "theoretical_threshold": 0.25, "attacker_latency_ms": null, "honest_latency_ms": null, "pool_size": null, "relative_revenue": 0.343868, "revenue_gain": 0.033868, "profitable": true, "attacker_revenue": 26858, "honest_revenue": 51247, "orphaned_blocks": 21895, "blocks": 100000}, {"experiment": "legacy", "sweep_value": 0.32, "alpha": 0.32, "gamma": 0.5, "theoretical_threshold": 0.25, "attacker_latency_ms": null, "honest_latency_ms": null, "pool_size": null, "relative_revenue": 0.361897, "revenue_gain": 0.041897, "profitable": true, "attacker_revenue": 28004, "honest_revenue": 49378, "orphaned_blocks": 22618, "blocks": 100000}, {"experiment": "legacy", "sweep_value": 0.33, "alpha": 0.33, "gamma": 0.5, "theoretical_threshold": 0.25, "attacker_latency_ms": null, "honest_latency_ms": null, "pool_size": null, "relative_revenue": 0.378494, "revenue_gain": 0.048494, "profitable": true, "attacker_revenue": 29022, "honest_revenue": 47656, "orphaned_blocks": 23323, "blocks": 100000}, {"experiment": "legacy", "sweep_value": 0.34, "alpha": 0.34, "gamma": 0.5, "theoretical_threshold": 0.25, "attacker_latency_ms": null, "honest_latency_ms": null, "pool_size": null, "relative_revenue": 0.398204, "revenue_gain": 0.058204, "profitable": true, "attacker_revenue": 30224, "honest_revenue": 45677, "orphaned_blocks": 24099, "blocks": 100000}, {"experiment": "legacy", "sweep_value": 0.35, "alpha": 0.35, "gamma": 0.5, "theoretical_threshold": 0.25, "attacker_latency_ms": null, "honest_latency_ms": null, "pool_size": null, "relative_revenue": 0.414521, "revenue_gain": 0.064521, "profitable": true, "attacker_revenue": 31194, "honest_revenue": 44060, "orphaned_blocks": 24746, "blocks": 100000}, {"experiment": "legacy", "sweep_value": 0.36, "alpha": 0.36, "gamma": 0.5, "theoretical_threshold": 0.25, "attacker_latency_ms": null, "honest_latency_ms": null, "pool_size": null, "relative_revenue": 0.437237, "revenue_gain": 0.077237, "profitable": true, "attacker_revenue": 32485, "honest_revenue": 41813, "orphaned_blocks": 25701, "blocks": 100000}, {"experiment": "legacy", "sweep_value": 0.37, "alpha": 0.37, "gamma": 0.5, "theoretical_threshold": 0.25, "attacker_latency_ms": null, "honest_latency_ms": null, "pool_size": null, "relative_revenue": 0.457748, "revenue_gain": 0.087748, "profitable": true, "attacker_revenue": 33614, "honest_revenue": 39821, "orphaned_blocks": 26564, "blocks": 100000}, {"experiment": "legacy", "sweep_value": 0.38, "alpha": 0.38, "gamma": 0.5, "theoretical_threshold": 0.25, "attacker_latency_ms": null, "honest_latency_ms": null, "pool_size": null, "relative_revenue": 0.477567, "revenue_gain": 0.097567, "profitable": true, "attacker_revenue": 34663, "honest_revenue": 37919, "orphaned_blocks": 27418, "blocks": 100000}, {"experiment": "legacy", "sweep_value": 0.39, "alpha": 0.39, "gamma": 0.5, "theoretical_threshold": 0.25, "attacker_latency_ms": null, "honest_latency_ms": null, "pool_size": null, "relative_revenue": 0.500883, "revenue_gain": 0.110883, "profitable": true, "attacker_revenue": 35844, "honest_revenue": 35719, "orphaned_blocks": 28437, "blocks": 100000}, {"experiment": "legacy", "sweep_value": 0.4, "alpha": 0.4, "gamma": 0.5, "theoretical_threshold": 0.25, "attacker_latency_ms": null, "honest_latency_ms": null, "pool_size": null, "relative_revenue": 0.526597, "revenue_gain": 0.126597, "profitable": true, "attacker_revenue": 37094, "honest_revenue": 33348, "orphaned_blocks": 29557, "blocks": 100000}, {"experiment": "legacy", "sweep_value": 0.41, "alpha": 0.41, "gamma": 0.5, "theoretical_threshold": 0.25, "attacker_latency_ms": null, "honest_latency_ms": null, "pool_size": null, "relative_revenue": 0.553775, "revenue_gain": 0.143775, "profitable": true, "attacker_revenue": 38339, "honest_revenue": 30894, "orphaned_blocks": 30767, "blocks": 100000}, {"experiment": "legacy", "sweep_value": 0.42, "alpha": 0.42, "gamma": 0.5, "theoretical_threshold": 0.25, "attacker_latency_ms": null, "honest_latency_ms": null, "pool_size": null, "relative_revenue": 0.580007, "revenue_gain": 0.160007, "profitable": true, "attacker_revenue": 39470, "honest_revenue": 28582, "orphaned_blocks": 31948, "blocks": 100000}, {"experiment": "legacy", "sweep_value": 0.43, "alpha": 0.43, "gamma": 0.5, "theoretical_threshold": 0.25, "attacker_latency_ms": null, "honest_latency_ms": null, "pool_size": null, "relative_revenue": 0.610759, "revenue_gain": 0.180759, "profitable": true, "attacker_revenue": 40687, "honest_revenue": 25933, "orphaned_blocks": 33380, "blocks": 100000}, {"experiment": "legacy", "sweep_value": 0.44, "alpha": 0.44, "gamma": 0.5, "theoretical_threshold": 0.25, "attacker_latency_ms": null, "honest_latency_ms": null, "pool_size": null, "relative_revenue": 0.647221, "revenue_gain": 0.207221, "profitable": true, "attacker_revenue": 42040, "honest_revenue": 22916, "orphaned_blocks": 35044, "blocks": 100000}, {"experiment": "legacy", "sweep_value": 0.45, "alpha": 0.45, "gamma": 0.5, "theoretical_threshold": 0.25, "attacker_latency_ms": null, "honest_latency_ms": null, "pool_size": null, "relative_revenue": 0.674676, "revenue_gain": 0.224676, "profitable": true, "attacker_revenue": 43003, "honest_revenue": 20738, "orphaned_blocks": 36259, "blocks": 100000}, {"experiment": "legacy", "sweep_value": 0.46, "alpha": 0.46, "gamma": 0.5, "theoretical_threshold": 0.25, "attacker_latency_ms": null, "honest_latency_ms": null, "pool_size": null, "relative_revenue": 0.724709, "revenue_gain": 0.264709, "profitable": true, "attacker_revenue": 44493, "honest_revenue": 16908, "orphaned_blocks": 38600, "blocks": 100000}, {"experiment": "legacy", "sweep_value": 0.47, "alpha": 0.47, "gamma": 0.5, "theoretical_threshold": 0.25, "attacker_latency_ms": null, "honest_latency_ms": null, "pool_size": null, "relative_revenue": 0.770254, "revenue_gain": 0.300254, "profitable": true, "attacker_revenue": 45735, "honest_revenue": 13644, "orphaned_blocks": 40621, "blocks": 100000}, {"experiment": "legacy", "sweep_value": 0.48, "alpha": 0.48, "gamma": 0.5, "theoretical_threshold": 0.25, "attacker_latency_ms": null, "honest_latency_ms": null, "pool_size": null, "relative_revenue": 0.836732, "revenue_gain": 0.356732, "profitable": true, "attacker_revenue": 47257, "honest_revenue": 9225, "orphaned_blocks": 43519, "blocks": 100000}, {"experiment": "legacy", "sweep_value": 0.49, "alpha": 0.49, "gamma": 0.5, "theoretical_threshold": 0.25, "attacker_latency_ms": null, "honest_latency_ms": null, "pool_size": null, "relative_revenue": 0.900117, "revenue_gain": 0.410117, "profitable": true, "attacker_revenue": 48446, "honest_revenue": 5381, "orphaned_blocks": 46173, "blocks": 100000}, {"experiment": "legacy", "sweep_value": 0.01, "alpha": 0.01, "gamma": 0.75, "theoretical_threshold": 0.166667, "attacker_latency_ms": null, "honest_latency_ms": null, "pool_size": null, "relative_revenue": 0.007741, "revenue_gain": -0.002259, "profitable": false, "attacker_revenue": 766, "honest_revenue": 98247, "orphaned_blocks": 986, "blocks": 100000}, {"experiment": "legacy", "sweep_value": 0.02, "alpha": 0.02, "gamma": 0.75, "theoretical_threshold": 0.166667, "attacker_latency_ms": null, "honest_latency_ms": null, "pool_size": null, "relative_revenue": 0.015537, "revenue_gain": -0.004463, "profitable": false, "attacker_revenue": 1524, "honest_revenue": 96556, "orphaned_blocks": 1921, "blocks": 100000}, {"experiment": "legacy", "sweep_value": 0.03, "alpha": 0.03, "gamma": 0.75, "theoretical_threshold": 0.166667, "attacker_latency_ms": null, "honest_latency_ms": null, "pool_size": null, "relative_revenue": 0.023821, "revenue_gain": -0.006179, "profitable": false, "attacker_revenue": 2315, "honest_revenue": 94878, "orphaned_blocks": 2807, "blocks": 100000}, {"experiment": "legacy", "sweep_value": 0.04, "alpha": 0.04, "gamma": 0.75, "theoretical_threshold": 0.166667, "attacker_latency_ms": null, "honest_latency_ms": null, "pool_size": null, "relative_revenue": 0.032945, "revenue_gain": -0.007055, "profitable": false, "attacker_revenue": 3172, "honest_revenue": 93101, "orphaned_blocks": 3728, "blocks": 100000}, {"experiment": "legacy", "sweep_value": 0.05, "alpha": 0.05, "gamma": 0.75, "theoretical_threshold": 0.166667, "attacker_latency_ms": null, "honest_latency_ms": null, "pool_size": null, "relative_revenue": 0.041867, "revenue_gain": -0.008133, "profitable": false, "attacker_revenue": 3995, "honest_revenue": 91422, "orphaned_blocks": 4583, "blocks": 100000}, {"experiment": "legacy", "sweep_value": 0.06, "alpha": 0.06, "gamma": 0.75, "theoretical_threshold": 0.166667, "attacker_latency_ms": null, "honest_latency_ms": null, "pool_size": null, "relative_revenue": 0.05096, "revenue_gain": -0.00904, "profitable": false, "attacker_revenue": 4822, "honest_revenue": 89804, "orphaned_blocks": 5374, "blocks": 100000}, {"experiment": "legacy", "sweep_value": 0.07, "alpha": 0.07, "gamma": 0.75, "theoretical_threshold": 0.166667, "attacker_latency_ms": null, "honest_latency_ms": null, "pool_size": null, "relative_revenue": 0.060325, "revenue_gain": -0.009675, "profitable": false, "attacker_revenue": 5660, "honest_revenue": 88172, "orphaned_blocks": 6167, "blocks": 100000}, {"experiment": "legacy", "sweep_value": 0.08, "alpha": 0.08, "gamma": 0.75, "theoretical_threshold": 0.166667, "attacker_latency_ms": null, "honest_latency_ms": null, "pool_size": null, "relative_revenue": 0.070568, "revenue_gain": -0.009432, "profitable": false, "attacker_revenue": 6565, "honest_revenue": 86463, "orphaned_blocks": 6972, "blocks": 100000}, {"experiment": "legacy", "sweep_value": 0.09, "alpha": 0.09, "gamma": 0.75, "theoretical_threshold": 0.166667, "attacker_latency_ms": null, "honest_latency_ms": null, "pool_size": null, "relative_revenue": 0.080837, "revenue_gain": -0.009163, "profitable": false, "attacker_revenue": 7461, "honest_revenue": 84833, "orphaned_blocks": 7706, "blocks": 100000}, {"experiment": "legacy", "sweep_value": 0.1, "alpha": 0.1, "gamma": 0.75, "theoretical_threshold": 0.166667, "attacker_latency_ms": null, "honest_latency_ms": null, "pool_size": null, "relative_revenue": 0.090864, "revenue_gain": -0.009136, "profitable": false, "attacker_revenue": 8321, "honest_revenue": 83252, "orphaned_blocks": 8427, "blocks": 100000}, {"experiment": "legacy", "sweep_value": 0.11, "alpha": 0.11, "gamma": 0.75, "theoretical_threshold": 0.166667, "attacker_latency_ms": null, "honest_latency_ms": null, "pool_size": null, "relative_revenue": 0.101695, "revenue_gain": -0.008305, "profitable": false, "attacker_revenue": 9240, "honest_revenue": 81620, "orphaned_blocks": 9140, "blocks": 100000}, {"experiment": "legacy", "sweep_value": 0.12, "alpha": 0.12, "gamma": 0.75, "theoretical_threshold": 0.166667, "attacker_latency_ms": null, "honest_latency_ms": null, "pool_size": null, "relative_revenue": 0.112076, "revenue_gain": -0.007924, "profitable": false, "attacker_revenue": 10108, "honest_revenue": 80080, "orphaned_blocks": 9812, "blocks": 100000}, {"experiment": "legacy", "sweep_value": 0.13, "alpha": 0.13, "gamma": 0.75, "theoretical_threshold": 0.166667, "attacker_latency_ms": null, "honest_latency_ms": null, "pool_size": null, "relative_revenue": 0.124028, "revenue_gain": -0.005972, "profitable": false, "attacker_revenue": 11093, "honest_revenue": 78347, "orphaned_blocks": 10560, "blocks": 100000}, {"experiment": "legacy", "sweep_value": 0.14, "alpha": 0.14, "gamma": 0.75, "theoretical_threshold": 0.166667, "attacker_latency_ms": null, "honest_latency_ms": null, "pool_size": null, "relative_revenue": 0.135061, "revenue_gain": -0.004939, "profitable": false, "attacker_revenue": 11998, "honest_revenue": 76836, "orphaned_blocks": 11166, "blocks": 100000}, {"experiment": "legacy", "sweep_value": 0.15, "alpha": 0.15, "gamma": 0.75, "theoretical_threshold": 0.166667, "attacker_latency_ms": null, "honest_latency_ms": null, "pool_size": null, "relative_revenue": 0.147163, "revenue_gain": -0.002837, "profitable": false, "attacker_revenue": 12975, "honest_revenue": 75195, "orphaned_blocks": 11829, "blocks": 100000}, {"experiment": "legacy", "sweep_value": 0.16, "alpha": 0.16, "gamma": 0.75, "theoretical_threshold": 0.166667, "attacker_latency_ms": null, "honest_latency_ms": null, "pool_size": null, "relative_revenue": 0.15921, "revenue_gain": -0.00079, "profitable": false, "attacker_revenue": 13933, "honest_revenue": 73583, "orphaned_blocks": 12484, "blocks": 100000}, {"experiment": "legacy", "sweep_value": 0.17, "alpha": 0.17, "gamma": 0.75, "theoretical_threshold": 0.166667, "attacker_latency_ms": null, "honest_latency_ms": null, "pool_size": null, "relative_revenue": 0.170613, "revenue_gain": 0.000613, "profitable": true, "attacker_revenue": 14829, "honest_revenue": 72086, "orphaned_blocks": 13086, "blocks": 100000}, {"experiment": "legacy", "sweep_value": 0.18, "alpha": 0.18, "gamma": 0.75, "theoretical_threshold": 0.166667, "attacker_latency_ms": null, "honest_latency_ms": null, "pool_size": null, "relative_revenue": 0.182751, "revenue_gain": 0.002751, "profitable": true, "attacker_revenue": 15767, "honest_revenue": 70511, "orphaned_blocks": 13722, "blocks": 100000}, {"experiment": "legacy", "sweep_value": 0.19, "alpha": 0.19, "gamma": 0.75, "theoretical_threshold": 0.166667, "attacker_latency_ms": null, "honest_latency_ms": null, "pool_size": null, "relative_revenue": 0.195535, "revenue_gain": 0.005535, "profitable": true, "attacker_revenue": 16753, "honest_revenue": 68925, "orphaned_blocks": 14322, "blocks": 100000}, {"experiment": "legacy", "sweep_value": 0.2, "alpha": 0.2, "gamma": 0.75, "theoretical_threshold": 0.166667, "attacker_latency_ms": null, "honest_latency_ms": null, "pool_size": null, "relative_revenue": 0.208898, "revenue_gain": 0.008898, "profitable": true, "attacker_revenue": 17762, "honest_revenue": 67267, "orphaned_blocks": 14971, "blocks": 100000}, {"experiment": "legacy", "sweep_value": 0.21, "alpha": 0.21, "gamma": 0.75, "theoretical_threshold": 0.166667, "attacker_latency_ms": null, "honest_latency_ms": null, "pool_size": null, "relative_revenue": 0.221086, "revenue_gain": 0.011086, "profitable": true, "attacker_revenue": 18673, "honest_revenue": 65787, "orphaned_blocks": 15539, "blocks": 100000}, {"experiment": "legacy", "sweep_value": 0.22, "alpha": 0.22, "gamma": 0.75, "theoretical_threshold": 0.166667, "attacker_latency_ms": null, "honest_latency_ms": null, "pool_size": null, "relative_revenue": 0.23528, "revenue_gain": 0.01528, "profitable": true, "attacker_revenue": 19728, "honest_revenue": 64123, "orphaned_blocks": 16149, "blocks": 100000}, {"experiment": "legacy", "sweep_value": 0.23, "alpha": 0.23, "gamma": 0.75, "theoretical_threshold": 0.166667, "attacker_latency_ms": null, "honest_latency_ms": null, "pool_size": null, "relative_revenue": 0.2496, "revenue_gain": 0.0196, "profitable": true, "attacker_revenue": 20772, "honest_revenue": 62451, "orphaned_blocks": 16776, "blocks": 100000}, {"experiment": "legacy", "sweep_value": 0.24, "alpha": 0.24, "gamma": 0.75, "theoretical_threshold": 0.166667, "attacker_latency_ms": null, "honest_latency_ms": null, "pool_size": null, "relative_revenue": 0.262877, "revenue_gain": 0.022877, "profitable": true, "attacker_revenue": 21716, "honest_revenue": 60893, "orphaned_blocks": 17392, "blocks": 100000}, {"experiment": "legacy", "sweep_value": 0.25, "alpha": 0.25, "gamma": 0.75, "theoretical_threshold": 0.166667, "attacker_latency_ms": null, "honest_latency_ms": null, "pool_size": null, "relative_revenue": 0.276806, "revenue_gain": 0.026806, "profitable": true, "attacker_revenue": 22704, "honest_revenue": 59320, "orphaned_blocks": 17976, "blocks": 100000}, {"experiment": "legacy", "sweep_value": 0.26, "alpha": 0.26, "gamma": 0.75, "theoretical_threshold": 0.166667, "attacker_latency_ms": null, "honest_latency_ms": null, "pool_size": null, "relative_revenue": 0.291319, "revenue_gain": 0.031319, "profitable": true, "attacker_revenue": 23718, "honest_revenue": 57698, "orphaned_blocks": 18584, "blocks": 100000}, {"experiment": "legacy", "sweep_value": 0.27, "alpha": 0.27, "gamma": 0.75, "theoretical_threshold": 0.166667, "attacker_latency_ms": null, "honest_latency_ms": null, "pool_size": null, "relative_revenue": 0.307397, "revenue_gain": 0.037397, "profitable": true, "attacker_revenue": 24823, "honest_revenue": 55929, "orphaned_blocks": 19248, "blocks": 100000}, {"experiment": "legacy", "sweep_value": 0.28, "alpha": 0.28, "gamma": 0.75, "theoretical_threshold": 0.166667, "attacker_latency_ms": null, "honest_latency_ms": null, "pool_size": null, "relative_revenue": 0.323317, "revenue_gain": 0.043317, "profitable": true, "attacker_revenue": 25902, "honest_revenue": 54211, "orphaned_blocks": 19887, "blocks": 100000}, {"experiment": "legacy", "sweep_value": 0.29, "alpha": 0.29, "gamma": 0.75, "theoretical_threshold": 0.166667, "attacker_latency_ms": null, "honest_latency_ms": null, "pool_size": null, "relative_revenue": 0.338433, "revenue_gain": 0.048433, "profitable": true, "attacker_revenue": 26885, "honest_revenue": 52556, "orphaned_blocks": 20559, "blocks": 100000}, {"experiment": "legacy", "sweep_value": 0.3, "alpha": 0.3, "gamma": 0.75, "theoretical_threshold": 0.166667, "attacker_latency_ms": null, "honest_latency_ms": null, "pool_size": null, "relative_revenue": 0.35432, "revenue_gain": 0.05432, "profitable": true, "attacker_revenue": 27916, "honest_revenue": 50872, "orphaned_blocks": 21212, "blocks": 100000}, {"experiment": "legacy", "sweep_value": 0.31, "alpha": 0.31, "gamma": 0.75, "theoretical_threshold": 0.166667, "attacker_latency_ms": null, "honest_latency_ms": null, "pool_size": null, "relative_revenue": 0.369575, "revenue_gain": 0.059575, "profitable": true, "attacker_revenue": 28888, "honest_revenue": 49279, "orphaned_blocks": 21833, "blocks": 100000}, {"experiment": "legacy", "sweep_value": 0.32, "alpha": 0.32, "gamma": 0.75, "theoretical_threshold": 0.166667, "attacker_latency_ms": null, "honest_latency_ms": null, "pool_size": null, "relative_revenue": 0.386112, "revenue_gain": 0.066112, "profitable": true, "attacker_revenue": 29908, "honest_revenue": 47552, "orphaned_blocks": 22541, "blocks": 100000}, {"experiment": "legacy", "sweep_value": 0.33, "alpha": 0.33, "gamma": 0.75, "theoretical_threshold": 0.166667, "attacker_latency_ms": null, "honest_latency_ms": null, "pool_size": null, "relative_revenue": 0.404849, "revenue_gain": 0.074849, "profitable": true, "attacker_revenue": 31036, "honest_revenue": 45626, "orphaned_blocks": 23337, "blocks": 100000}, {"experiment": "legacy", "sweep_value": 0.34, "alpha": 0.34, "gamma": 0.75, "theoretical_threshold": 0.166667, "attacker_latency_ms": null, "honest_latency_ms": null, "pool_size": null, "relative_revenue": 0.421572, "revenue_gain": 0.081572, "profitable": true, "attacker_revenue": 32034, "honest_revenue": 43954, "orphaned_blocks": 24011, "blocks": 100000}, {"experiment": "legacy", "sweep_value": 0.35, "alpha": 0.35, "gamma": 0.75, "theoretical_threshold": 0.166667, "attacker_latency_ms": null, "honest_latency_ms": null, "pool_size": null, "relative_revenue": 0.440728, "revenue_gain": 0.090728, "profitable": true, "attacker_revenue": 33119, "honest_revenue": 42028, "orphaned_blocks": 24853, "blocks": 100000}, {"experiment": "legacy", "sweep_value": 0.36, "alpha": 0.36, "gamma": 0.75, "theoretical_threshold": 0.166667, "attacker_latency_ms": null, "honest_latency_ms": null, "pool_size": null, "relative_revenue": 0.460913, "revenue_gain": 0.100913, "profitable": true, "attacker_revenue": 34264, "honest_revenue": 40076, "orphaned_blocks": 25659, "blocks": 100000}, {"experiment": "legacy", "sweep_value": 0.37, "alpha": 0.37, "gamma": 0.75, "theoretical_threshold": 0.166667, "attacker_latency_ms": null, "honest_latency_ms": null, "pool_size": null, "relative_revenue": 0.481284, "revenue_gain": 0.111284, "profitable": true, "attacker_revenue": 35350, "honest_revenue": 38100, "orphaned_blocks": 26550, "blocks": 100000}, {"experiment": "legacy", "sweep_value": 0.38, "alpha": 0.38, "gamma": 0.75, "theoretical_threshold": 0.166667, "attacker_latency_ms": null, "honest_latency_ms": null, "pool_size": null, "relative_revenue": 0.500818, "revenue_gain": 0.120818, "profitable": true, "attacker_revenue": 36330, "honest_revenue": 36213, "orphaned_blocks": 27457, "blocks": 100000}, {"experiment": "legacy", "sweep_value": 0.39, "alpha": 0.39, "gamma": 0.75, "theoretical_threshold": 0.166667, "attacker_latency_ms": null, "honest_latency_ms": null, "pool_size": null, "relative_revenue": 0.523066, "revenue_gain": 0.133066, "profitable": true, "attacker_revenue": 37435, "honest_revenue": 34136, "orphaned_blocks": 28428, "blocks": 100000}, {"experiment": "legacy", "sweep_value": 0.4, "alpha": 0.4, "gamma": 0.75, "theoretical_threshold": 0.166667, "attacker_latency_ms": null, "honest_latency_ms": null, "pool_size": null, "relative_revenue": 0.547976, "revenue_gain": 0.147976, "profitable": true, "attacker_revenue": 38602, "honest_revenue": 31844, "orphaned_blocks": 29554, "blocks": 100000}, {"experiment": "legacy", "sweep_value": 0.41, "alpha": 0.41, "gamma": 0.75, "theoretical_threshold": 0.166667, "attacker_latency_ms": null, "honest_latency_ms": null, "pool_size": null, "relative_revenue": 0.571626, "revenue_gain": 0.161626, "profitable": true, "attacker_revenue": 39624, "honest_revenue": 29695, "orphaned_blocks": 30680, "blocks": 100000}, {"experiment": "legacy", "sweep_value": 0.42, "alpha": 0.42, "gamma": 0.75, "theoretical_threshold": 0.166667, "attacker_latency_ms": null, "honest_latency_ms": null, "pool_size": null, "relative_revenue": 0.599082, "revenue_gain": 0.179082, "profitable": true, "attacker_revenue": 40724, "honest_revenue": 27254, "orphaned_blocks": 32022, "blocks": 100000}, {"experiment": "legacy", "sweep_value": 0.43, "alpha": 0.43, "gamma": 0.75, "theoretical_threshold": 0.166667, "attacker_latency_ms": null, "honest_latency_ms": null, "pool_size": null, "relative_revenue": 0.625238, "revenue_gain": 0.195238, "profitable": true, "attacker_revenue": 41760, "honest_revenue": 25031, "orphaned_blocks": 33209, "blocks": 100000}, {"experiment": "legacy", "sweep_value": 0.44, "alpha": 0.44, "gamma": 0.75, "theoretical_threshold": 0.166667, "attacker_latency_ms": null, "honest_latency_ms": null, "pool_size": null, "relative_revenue": 0.657258, "revenue_gain": 0.217258, "profitable": true, "attacker_revenue": 42878, "honest_revenue": 22361, "orphaned_blocks": 34761, "blocks": 100000}, {"experiment": "legacy", "sweep_value": 0.45, "alpha": 0.45, "gamma": 0.75, "theoretical_threshold": 0.166667, "attacker_latency_ms": null, "honest_latency_ms": null, "pool_size": null, "relative_revenue": 0.696164, "revenue_gain": 0.246164, "profitable": true, "attacker_revenue": 44119, "honest_revenue": 19264, "orphaned_blocks": 36617, "blocks": 100000}, {"experiment": "legacy", "sweep_value": 0.46, "alpha": 0.46, "gamma": 0.75, "theoretical_threshold": 0.166667, "attacker_latency_ms": null, "honest_latency_ms": null, "pool_size": null, "relative_revenue": 0.736068, "revenue_gain": 0.276068, "profitable": true, "attacker_revenue": 45246, "honest_revenue": 16224, "orphaned_blocks": 38529, "blocks": 100000}, {"experiment": "legacy", "sweep_value": 0.47, "alpha": 0.47, "gamma": 0.75, "theoretical_threshold": 0.166667, "attacker_latency_ms": null, "honest_latency_ms": null, "pool_size": null, "relative_revenue": 0.782101, "revenue_gain": 0.312101, "profitable": true, "attacker_revenue": 46341, "honest_revenue": 12914, "orphaned_blocks": 40745, "blocks": 100000}, {"experiment": "legacy", "sweep_value": 0.48, "alpha": 0.48, "gamma": 0.75, "theoretical_threshold": 0.166667, "attacker_latency_ms": null, "honest_latency_ms": null, "pool_size": null, "relative_revenue": 0.836796, "revenue_gain": 0.356796, "profitable": true, "attacker_revenue": 47521, "honest_revenue": 9269, "orphaned_blocks": 43210, "blocks": 100000}, {"experiment": "legacy", "sweep_value": 0.49, "alpha": 0.49, "gamma": 0.75, "theoretical_threshold": 0.166667, "attacker_latency_ms": null, "honest_latency_ms": null, "pool_size": null, "relative_revenue": 0.909078, "revenue_gain": 0.419078, "profitable": true, "attacker_revenue": 48788, "honest_revenue": 4882, "orphaned_blocks": 46330, "blocks": 100000}];
+    const latencyRows = [{"experiment": "latency_sweep", "sweep_value": 20.0, "alpha": 0.2, "gamma": 0.763333, "theoretical_threshold": 0.160633, "attacker_latency_ms": 20.0, "honest_latency_ms": 100.0, "pool_size": 0.2, "relative_revenue": 0.210302, "revenue_gain": 0.010302, "profitable": true, "attacker_revenue": 35761, "honest_revenue": 134284, "orphaned_blocks": 29955, "blocks": 200000}, {"experiment": "latency_sweep", "sweep_value": 40.0, "alpha": 0.2, "gamma": 0.68, "theoretical_threshold": 0.195122, "attacker_latency_ms": 40.0, "honest_latency_ms": 100.0, "pool_size": 0.2, "relative_revenue": 0.201116, "revenue_gain": 0.001116, "profitable": true, "attacker_revenue": 34212, "honest_revenue": 135899, "orphaned_blocks": 29890, "blocks": 200000}, {"experiment": "latency_sweep", "sweep_value": 60.0, "alpha": 0.2, "gamma": 0.6175, "theoretical_threshold": 0.216714, "attacker_latency_ms": 60.0, "honest_latency_ms": 100.0, "pool_size": 0.2, "relative_revenue": 0.195291, "revenue_gain": -0.004709, "profitable": false, "attacker_revenue": 33210, "honest_revenue": 136847, "orphaned_blocks": 29942, "blocks": 200000}, {"experiment": "latency_sweep", "sweep_value": 80.0, "alpha": 0.2, "gamma": 0.568889, "theoretical_threshold": 0.231504, "attacker_latency_ms": 80.0, "honest_latency_ms": 100.0, "pool_size": 0.2, "relative_revenue": 0.189381, "revenue_gain": -0.010619, "profitable": false, "attacker_revenue": 32217, "honest_revenue": 137901, "orphaned_blocks": 29882, "blocks": 200000}, {"experiment": "latency_sweep", "sweep_value": 100.0, "alpha": 0.2, "gamma": 0.53, "theoretical_threshold": 0.242268, "attacker_latency_ms": 100.0, "honest_latency_ms": 100.0, "pool_size": 0.2, "relative_revenue": 0.185181, "revenue_gain": -0.014819, "profitable": false, "attacker_revenue": 31504, "honest_revenue": 138624, "orphaned_blocks": 29872, "blocks": 200000}];
+    const poolRows = [{"experiment": "pool_sweep", "sweep_value": 0.0, "alpha": 0.2, "gamma": 0.616667, "theoretical_threshold": 0.216981, "attacker_latency_ms": 50.0, "honest_latency_ms": 100.0, "pool_size": 0.0, "relative_revenue": 0.194819, "revenue_gain": -0.005181, "profitable": false, "attacker_revenue": 33128, "honest_revenue": 136917, "orphaned_blocks": 29955, "blocks": 200000}, {"experiment": "pool_sweep", "sweep_value": 0.1, "alpha": 0.2, "gamma": 0.631667, "theoretical_threshold": 0.212092, "attacker_latency_ms": 50.0, "honest_latency_ms": 100.0, "pool_size": 0.1, "relative_revenue": 0.195961, "revenue_gain": -0.004039, "profitable": false, "attacker_revenue": 33335, "honest_revenue": 136775, "orphaned_blocks": 29890, "blocks": 200000}, {"experiment": "pool_sweep", "sweep_value": 0.2, "alpha": 0.2, "gamma": 0.646667, "theoretical_threshold": 0.207031, "attacker_latency_ms": 50.0, "honest_latency_ms": 100.0, "pool_size": 0.2, "relative_revenue": 0.19837, "revenue_gain": -0.00163, "profitable": false, "attacker_revenue": 33734, "honest_revenue": 136323, "orphaned_blocks": 29942, "blocks": 200000}, {"experiment": "pool_sweep", "sweep_value": 0.3, "alpha": 0.2, "gamma": 0.661667, "theoretical_threshold": 0.201789, "attacker_latency_ms": 50.0, "honest_latency_ms": 100.0, "pool_size": 0.3, "relative_revenue": 0.199299, "revenue_gain": -0.000701, "profitable": false, "attacker_revenue": 33904, "honest_revenue": 136214, "orphaned_blocks": 29882, "blocks": 200000}, {"experiment": "pool_sweep", "sweep_value": 0.4, "alpha": 0.2, "gamma": 0.676667, "theoretical_threshold": 0.196356, "attacker_latency_ms": 50.0, "honest_latency_ms": 100.0, "pool_size": 0.4, "relative_revenue": 0.200631, "revenue_gain": 0.000631, "profitable": true, "attacker_revenue": 34133, "honest_revenue": 135995, "orphaned_blocks": 29872, "blocks": 200000}, {"experiment": "pool_sweep", "sweep_value": 0.5, "alpha": 0.2, "gamma": 0.691667, "theoretical_threshold": 0.190722, "attacker_latency_ms": 50.0, "honest_latency_ms": 100.0, "pool_size": 0.5, "relative_revenue": 0.202055, "revenue_gain": 0.002055, "profitable": true, "attacker_revenue": 34360, "honest_revenue": 135695, "orphaned_blocks": 29945, "blocks": 200000}];
+
+    const state = {
+      mode: "derived",
+      alpha: 0.30,
+      attackerLatency: 50,
+      honestLatency: 100,
+      poolSize: 0.20,
+      manualGamma: 0.53,
+    };
+
+    const gammaBuckets = [...new Set(legacyRows.map((row) => row.gamma))].sort((a, b) => a - b);
+    const curveByGamma = new Map(
+      gammaBuckets.map((gamma) => [
+        gamma,
+        legacyRows
+          .filter((row) => row.gamma === gamma)
+          .sort((a, b) => a.alpha - b.alpha),
+      ])
+    );
+
+    const controls = {
+      derivedMode: document.getElementById("derivedMode"),
+      manualMode: document.getElementById("manualMode"),
+      alphaRange: document.getElementById("alphaRange"),
+      attackerLatencyRange: document.getElementById("attackerLatencyRange"),
+      honestLatencyRange: document.getElementById("honestLatencyRange"),
+      poolRange: document.getElementById("poolRange"),
+      manualGammaRange: document.getElementById("manualGammaRange"),
+    };
+
+    function gammaFromLatency(attackerLatency, honestLatency, poolSize, baseGamma = 0.5) {
+      const total = Math.max(attackerLatency + honestLatency, 1e-9);
+      const latencyEdge = (honestLatency - attackerLatency) / total;
+      const rawGamma = baseGamma + 0.35 * latencyEdge + 0.15 * poolSize;
+      return Math.max(0, Math.min(1, rawGamma));
+    }
+
+    function theoreticalThreshold(gamma) {
+      return (1 - gamma) / (3 - 2 * gamma);
+    }
+
+    function clamp(value, min, max) {
+      return Math.max(min, Math.min(max, value));
+    }
+
+    function formatFixed(value, digits = 3) {
+      return Number(value).toFixed(digits);
+    }
+
+    function findBoundingGammas(targetGamma) {
+      const clamped = clamp(targetGamma, gammaBuckets[0], gammaBuckets[gammaBuckets.length - 1]);
+      let lower = gammaBuckets[0];
+      let upper = gammaBuckets[gammaBuckets.length - 1];
+
+      for (let index = 0; index < gammaBuckets.length; index += 1) {
+        const gamma = gammaBuckets[index];
+        if (gamma <= clamped) lower = gamma;
+        if (gamma >= clamped) {
+          upper = gamma;
+          break;
+        }
+      }
+
+      return { lower, upper, clamped };
+    }
+
+    function interpolateCurve(targetGamma) {
+      const { lower, upper, clamped } = findBoundingGammas(targetGamma);
+      const lowerRows = curveByGamma.get(lower);
+      const upperRows = curveByGamma.get(upper);
+      const weight = lower === upper ? 0 : (clamped - lower) / (upper - lower);
+
+      return lowerRows.map((row, index) => {
+        const upperRow = upperRows[index];
+        return {
+          alpha: row.alpha,
+          relativeRevenue: row.relative_revenue + (upperRow.relative_revenue - row.relative_revenue) * weight,
+          threshold: theoreticalThreshold(clamped),
+        };
+      });
+    }
+
+    function interpolateValue(points, alpha) {
+      const sorted = [...points].sort((a, b) => a.alpha - b.alpha);
+      if (alpha <= sorted[0].alpha) return sorted[0].relativeRevenue;
+      if (alpha >= sorted[sorted.length - 1].alpha) return sorted[sorted.length - 1].relativeRevenue;
+
+      for (let index = 1; index < sorted.length; index += 1) {
+        const left = sorted[index - 1];
+        const right = sorted[index];
+        if (alpha <= right.alpha) {
+          const t = (alpha - left.alpha) / (right.alpha - left.alpha);
+          return left.relativeRevenue + (right.relativeRevenue - left.relativeRevenue) * t;
+        }
+      }
+      return sorted[sorted.length - 1].relativeRevenue;
+    }
+
+    function nearestRow(rows, key, target) {
+      return rows.reduce((best, row) => {
+        if (!best) return row;
+        return Math.abs(row[key] - target) < Math.abs(best[key] - target) ? row : best;
+      }, null);
+    }
+
+    function drawLineChart(canvas, config) {
+      const ctx = canvas.getContext("2d");
+      const ratio = window.devicePixelRatio || 1;
+      const bounds = canvas.getBoundingClientRect();
+      canvas.width = Math.round(bounds.width * ratio);
+      canvas.height = Math.round(bounds.height * ratio);
+      ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
+
+      const width = bounds.width;
+      const height = bounds.height;
+      const pad = { top: 26, right: 28, bottom: 54, left: 66 };
+      const plotW = width - pad.left - pad.right;
+      const plotH = height - pad.top - pad.bottom;
+
+      const xMin = config.xMin;
+      const xMax = config.xMax;
+      const yMin = config.yMin;
+      const yMax = config.yMax;
+
+      const xMap = (value) => pad.left + ((value - xMin) / (xMax - xMin || 1)) * plotW;
+      const yMap = (value) => pad.top + (1 - (value - yMin) / (yMax - yMin || 1)) * plotH;
+
+      ctx.clearRect(0, 0, width, height);
+      ctx.fillStyle = "#fffdf8";
+      ctx.fillRect(0, 0, width, height);
+
+      ctx.strokeStyle = "rgba(20, 33, 43, 0.10)";
+      ctx.lineWidth = 1;
+      ctx.fillStyle = "#5f6a72";
+      ctx.font = "13px Segoe UI";
+
+      for (let step = 0; step <= 5; step += 1) {
+        const xValue = xMin + ((xMax - xMin) * step) / 5;
+        const px = xMap(xValue);
+        ctx.beginPath();
+        ctx.moveTo(px, pad.top);
+        ctx.lineTo(px, pad.top + plotH);
+        ctx.stroke();
+        ctx.fillText(xValue.toFixed(config.xDigits ?? 2), px - 14, pad.top + plotH + 24);
+      }
+
+      for (let step = 0; step <= 6; step += 1) {
+        const yValue = yMin + ((yMax - yMin) * step) / 6;
+        const py = yMap(yValue);
+        ctx.beginPath();
+        ctx.moveTo(pad.left, py);
+        ctx.lineTo(pad.left + plotW, py);
+        ctx.stroke();
+        ctx.fillText(yValue.toFixed(config.yDigits ?? 2), 18, py + 4);
+      }
+
+      if (config.guides) {
+        config.guides(ctx, xMap, yMap, pad, plotW, plotH);
+      }
+
+      ctx.strokeStyle = config.stroke;
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      config.points.forEach((point, index) => {
+        const px = xMap(point.x);
+        const py = yMap(point.y);
+        if (index === 0) ctx.moveTo(px, py);
+        else ctx.lineTo(px, py);
+      });
+      ctx.stroke();
+
+      ctx.fillStyle = config.stroke;
+      config.points.forEach((point) => {
+        if (!config.showPoints) return;
+        ctx.beginPath();
+        ctx.arc(xMap(point.x), yMap(point.y), 3.5, 0, Math.PI * 2);
+        ctx.fill();
+      });
+
+      ctx.fillStyle = "#14212b";
+      ctx.font = "14px Segoe UI";
+      ctx.fillText(config.xLabel, pad.left + plotW / 2 - 54, height - 14);
+      ctx.save();
+      ctx.translate(18, pad.top + plotH / 2 + 54);
+      ctx.rotate(-Math.PI / 2);
+      ctx.fillText(config.yLabel, 0, 0);
+      ctx.restore();
+    }
+
+    function render() {
+      const gamma = state.mode === "derived"
+        ? gammaFromLatency(state.attackerLatency, state.honestLatency, state.poolSize)
+        : state.manualGamma;
+
+      const threshold = theoreticalThreshold(gamma);
+      const curve = interpolateCurve(gamma);
+      const revenue = interpolateValue(curve, state.alpha);
+      const profitable = revenue > state.alpha;
+      const visibleGamma = clamp(gamma, gammaBuckets[0], gammaBuckets[gammaBuckets.length - 1]);
+
+      document.getElementById("alphaValue").textContent = formatFixed(state.alpha, 2);
+      document.getElementById("attackerLatencyValue").textContent = `${state.attackerLatency} ms`;
+      document.getElementById("honestLatencyValue").textContent = `${state.honestLatency} ms`;
+      document.getElementById("poolValue").textContent = formatFixed(state.poolSize, 2);
+      document.getElementById("manualGammaValue").textContent = formatFixed(state.manualGamma, 2);
+
+      document.getElementById("gammaMetric").textContent = formatFixed(gamma, 3);
+      document.getElementById("thresholdMetric").textContent = formatFixed(threshold, 3);
+      document.getElementById("revenueMetric").textContent = formatFixed(revenue, 3);
+      document.getElementById("gammaExplanation").textContent = state.mode === "derived"
+        ? "Derived from latency and pool size using the project gamma model."
+        : "Manual override for discussion and what-if storytelling.";
+      document.getElementById("revenueEvidence").textContent =
+        `Interpolated between simulated gamma curves, using visible gamma ${formatFixed(visibleGamma, 2)} from Experiment 1.`;
+
+      const profitMetric = document.getElementById("profitMetric");
+      const profitSub = document.getElementById("profitSub");
+      profitMetric.textContent = profitable ? "Profitable" : "Not profitable";
+      profitMetric.className = `metric-value ${profitable ? "profit-good" : "profit-bad"}`;
+      profitSub.textContent = profitable
+        ? "The modeled attacker is above the break-even threshold."
+        : "The modeled attacker is still below the break-even threshold.";
+
+      drawLineChart(document.getElementById("curveChart"), {
+        xLabel: "Attacker hash share alpha",
+        yLabel: "Relative attacker revenue",
+        xMin: 0.0,
+        xMax: 0.5,
+        yMin: 0.0,
+        yMax: 0.95,
+        stroke: "#0f766e",
+        points: curve.map((row) => ({ x: row.alpha, y: row.relativeRevenue })),
+        showPoints: false,
+        guides: (ctx, xMap, yMap, pad, plotW, plotH) => {
+          ctx.strokeStyle = "#bf1238";
+          ctx.lineWidth = 2;
+          ctx.setLineDash([8, 6]);
+          ctx.beginPath();
+          ctx.moveTo(xMap(0), yMap(0));
+          ctx.lineTo(xMap(0.5), yMap(0.5));
+          ctx.stroke();
+
+          ctx.strokeStyle = "#d97706";
+          ctx.beginPath();
+          ctx.moveTo(xMap(threshold), pad.top);
+          ctx.lineTo(xMap(threshold), pad.top + plotH);
+          ctx.stroke();
+          ctx.setLineDash([]);
+
+          ctx.fillStyle = profitable ? "#166534" : "#bf1238";
+          ctx.beginPath();
+          ctx.arc(xMap(state.alpha), yMap(revenue), 7, 0, Math.PI * 2);
+          ctx.fill();
+
+          ctx.fillStyle = "#14212b";
+          ctx.font = "13px Segoe UI";
+          ctx.fillText(`threshold ${formatFixed(threshold, 3)}`, xMap(threshold) + 8, pad.top + 18);
+          ctx.fillText(`current (${formatFixed(state.alpha, 2)}, ${formatFixed(revenue, 3)})`, xMap(state.alpha) + 10, yMap(revenue) - 10);
+        },
+      });
+
+      const gammaPoints = [];
+      for (let latency = 10; latency <= 140; latency += 5) {
+        gammaPoints.push({
+          x: latency,
+          y: gammaFromLatency(latency, state.honestLatency, state.poolSize),
+        });
+      }
+
+      drawLineChart(document.getElementById("gammaChart"), {
+        xLabel: "Attacker latency (ms)",
+        yLabel: "Gamma",
+        xMin: 10,
+        xMax: 140,
+        yMin: 0,
+        yMax: 1,
+        stroke: "#d97706",
+        points: gammaPoints,
+        showPoints: false,
+        xDigits: 0,
+        guides: (ctx, xMap, yMap, pad, plotW, plotH) => {
+          ctx.strokeStyle = "#bf1238";
+          ctx.lineWidth = 2;
+          ctx.setLineDash([7, 5]);
+          ctx.beginPath();
+          ctx.moveTo(xMap(state.attackerLatency), pad.top);
+          ctx.lineTo(xMap(state.attackerLatency), pad.top + plotH);
+          ctx.stroke();
+          ctx.setLineDash([]);
+
+          const currentGamma = gammaFromLatency(state.attackerLatency, state.honestLatency, state.poolSize);
+          ctx.fillStyle = "#bf1238";
+          ctx.beginPath();
+          ctx.arc(xMap(state.attackerLatency), yMap(currentGamma), 6, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.fillText(`gamma ${formatFixed(currentGamma, 3)}`, xMap(state.attackerLatency) + 10, yMap(currentGamma) - 10);
+        },
+      });
+
+      drawLineChart(document.getElementById("latencyChart"), {
+        xLabel: "Attacker latency (ms)",
+        yLabel: "Relative revenue",
+        xMin: Math.min(...latencyRows.map((row) => row.attacker_latency_ms)),
+        xMax: Math.max(...latencyRows.map((row) => row.attacker_latency_ms)),
+        yMin: 0.17,
+        yMax: 0.22,
+        stroke: "#0f766e",
+        points: latencyRows.map((row) => ({ x: row.attacker_latency_ms, y: row.relative_revenue })),
+        showPoints: true,
+        xDigits: 0,
+        yDigits: 3,
+        guides: (ctx, xMap, yMap, pad, plotW, plotH) => {
+          const highlight = nearestRow(latencyRows, "attacker_latency_ms", state.attackerLatency);
+          ctx.strokeStyle = "#bf1238";
+          ctx.lineWidth = 2;
+          ctx.setLineDash([6, 5]);
+          ctx.beginPath();
+          ctx.moveTo(xMap(latencyRows[0].attacker_latency_ms), yMap(highlight.alpha));
+          ctx.lineTo(xMap(latencyRows[latencyRows.length - 1].attacker_latency_ms), yMap(highlight.alpha));
+          ctx.stroke();
+          ctx.setLineDash([]);
+
+          ctx.fillStyle = highlight.profitable ? "#166534" : "#bf1238";
+          ctx.beginPath();
+          ctx.arc(xMap(highlight.attacker_latency_ms), yMap(highlight.relative_revenue), 6, 0, Math.PI * 2);
+          ctx.fill();
+        },
+      });
+
+      const nearestLatency = nearestRow(latencyRows, "attacker_latency_ms", state.attackerLatency);
+      document.getElementById("latencyInsight").textContent =
+        `Closest recorded point: attacker latency ${nearestLatency.attacker_latency_ms.toFixed(0)} ms, gamma ${nearestLatency.gamma.toFixed(3)}, revenue ${nearestLatency.relative_revenue.toFixed(3)}.`;
+
+      drawLineChart(document.getElementById("poolChart"), {
+        xLabel: "Pool size",
+        yLabel: "Relative revenue",
+        xMin: Math.min(...poolRows.map((row) => row.pool_size)),
+        xMax: Math.max(...poolRows.map((row) => row.pool_size)),
+        yMin: 0.19,
+        yMax: 0.205,
+        stroke: "#0f766e",
+        points: poolRows.map((row) => ({ x: row.pool_size, y: row.relative_revenue })),
+        showPoints: true,
+        yDigits: 3,
+        guides: (ctx, xMap, yMap, pad, plotW, plotH) => {
+          const highlight = nearestRow(poolRows, "pool_size", state.poolSize);
+          ctx.strokeStyle = "#bf1238";
+          ctx.lineWidth = 2;
+          ctx.setLineDash([6, 5]);
+          ctx.beginPath();
+          ctx.moveTo(xMap(poolRows[0].pool_size), yMap(highlight.alpha));
+          ctx.lineTo(xMap(poolRows[poolRows.length - 1].pool_size), yMap(highlight.alpha));
+          ctx.stroke();
+          ctx.setLineDash([]);
+
+          ctx.fillStyle = highlight.profitable ? "#166534" : "#bf1238";
+          ctx.beginPath();
+          ctx.arc(xMap(highlight.pool_size), yMap(highlight.relative_revenue), 6, 0, Math.PI * 2);
+          ctx.fill();
+        },
+      });
+
+      const nearestPool = nearestRow(poolRows, "pool_size", state.poolSize);
+      document.getElementById("poolInsight").textContent =
+        `Closest recorded point: pool size ${nearestPool.pool_size.toFixed(2)}, gamma ${nearestPool.gamma.toFixed(3)}, revenue ${nearestPool.relative_revenue.toFixed(3)}.`;
+
+      controls.manualGammaRange.disabled = state.mode !== "manual";
+      controls.manualGammaRange.style.opacity = state.mode === "manual" ? "1" : "0.45";
+      controls.derivedMode.classList.toggle("active", state.mode === "derived");
+      controls.manualMode.classList.toggle("active", state.mode === "manual");
+    }
+
+    controls.derivedMode.addEventListener("click", () => {
+      state.mode = "derived";
+      render();
+    });
+    controls.manualMode.addEventListener("click", () => {
+      state.mode = "manual";
+      render();
+    });
+
+    controls.alphaRange.addEventListener("input", (event) => {
+      state.alpha = Number(event.target.value);
+      render();
+    });
+    controls.attackerLatencyRange.addEventListener("input", (event) => {
+      state.attackerLatency = Number(event.target.value);
+      render();
+    });
+    controls.honestLatencyRange.addEventListener("input", (event) => {
+      state.honestLatency = Number(event.target.value);
+      render();
+    });
+    controls.poolRange.addEventListener("input", (event) => {
+      state.poolSize = Number(event.target.value);
+      render();
+    });
+    controls.manualGammaRange.addEventListener("input", (event) => {
+      state.manualGamma = Number(event.target.value);
+      render();
+    });
+
+    window.addEventListener("resize", render);
+    render();
+  </script>
+</body>
+</html>

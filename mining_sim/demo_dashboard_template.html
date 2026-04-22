@@ -1,0 +1,792 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Selfish Mining Demo Dashboard</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #f3efe7;
+      --panel: rgba(255, 252, 246, 0.84);
+      --panel-strong: #fffdf8;
+      --ink: #14212b;
+      --muted: #5f6a72;
+      --line: rgba(20, 33, 43, 0.12);
+      --accent: #0f766e;
+      --accent-2: #d97706;
+      --danger: #bf1238;
+      --good: #166534;
+      --shadow: 0 24px 60px rgba(20, 33, 43, 0.12);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: "Segoe UI Variable", "Avenir Next", "Trebuchet MS", sans-serif;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at top left, rgba(15, 118, 110, 0.18), transparent 28%),
+        radial-gradient(circle at top right, rgba(217, 119, 6, 0.14), transparent 22%),
+        linear-gradient(180deg, #f8f4ec 0%, #f3efe7 48%, #efe9de 100%);
+      min-height: 100vh;
+    }
+
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      background-image:
+        linear-gradient(rgba(20, 33, 43, 0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(20, 33, 43, 0.03) 1px, transparent 1px);
+      background-size: 30px 30px;
+      pointer-events: none;
+      mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.7), transparent);
+    }
+
+    .shell {
+      width: min(1280px, calc(100% - 28px));
+      margin: 0 auto;
+      padding: 28px 0 48px;
+      position: relative;
+    }
+
+    .hero {
+      margin-bottom: 18px;
+    }
+
+    .panel {
+      background: var(--panel);
+      backdrop-filter: blur(16px);
+      border: 1px solid rgba(255, 255, 255, 0.7);
+      border-radius: 26px;
+      box-shadow: var(--shadow);
+    }
+
+    .hero-copy {
+      padding: 30px;
+    }
+
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      padding: 4px 0;
+      border-radius: 0;
+      background: transparent;
+      color: #000000;
+      letter-spacing: 0.02em;
+      text-transform: none;
+      font-size: 30px;
+      font-weight: 900;
+      line-height: 1.1;
+      margin-bottom: 8px;
+    }
+
+    h1, h2, h3 {
+      font-family: "Iowan Old Style", "Palatino Linotype", Georgia, serif;
+      margin: 0;
+      letter-spacing: -0.03em;
+    }
+
+    h1 {
+      font-size: clamp(36px, 6vw, 64px);
+      line-height: 0.98;
+      margin-bottom: 16px;
+      max-width: 12ch;
+    }
+
+    .hero-copy p,
+    .mini-copy,
+    .callout p,
+    .metric-sub,
+    .section-intro,
+    .insight {
+      color: var(--muted);
+      line-height: 1.6;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: 360px minmax(0, 1fr);
+      gap: 18px;
+      align-items: start;
+    }
+
+    .controls {
+      padding: 22px;
+      position: sticky;
+      top: 18px;
+    }
+
+    .control-stack,
+    .cards,
+    .evidence-grid {
+      display: grid;
+      gap: 14px;
+    }
+
+    .control {
+      padding: 14px 16px;
+      border-radius: 20px;
+      background: rgba(255, 255, 255, 0.78);
+      border: 1px solid var(--line);
+    }
+
+    .control-top,
+    label {
+      font-weight: 600;
+    }
+
+    input[type="range"] {
+      width: 100%;
+      accent-color: var(--accent);
+    }
+
+    .value {
+      font-variant-numeric: tabular-nums;
+      color: var(--accent);
+      font-weight: 700;
+    }
+
+    .toggle-row {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    button {
+      border: 1px solid var(--line);
+      background: rgba(255, 255, 255, 0.65);
+      color: var(--ink);
+      padding: 10px 14px;
+      border-radius: 999px;
+      cursor: pointer;
+      transition: transform 160ms ease, background 160ms ease, border-color 160ms ease;
+    }
+
+    button.active {
+      background: var(--ink);
+      color: #fff;
+      border-color: var(--ink);
+    }
+
+    button:hover {
+      transform: translateY(-1px);
+    }
+
+    .content {
+      display: grid;
+      gap: 18px;
+    }
+
+    .cards {
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+
+    .card {
+      padding: 18px;
+      border-radius: 22px;
+      background: var(--panel-strong);
+      border: 1px solid rgba(20, 33, 43, 0.08);
+      box-shadow: 0 14px 34px rgba(20, 33, 43, 0.08);
+      min-height: 132px;
+      animation: rise 440ms ease both;
+    }
+
+    .metric-value {
+      font-size: clamp(24px, 3vw, 34px);
+      font-weight: 800;
+      margin: 10px 0 8px;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .profit-good { color: var(--good); }
+    .profit-bad { color: var(--danger); }
+
+    .stage {
+      padding: 24px;
+    }
+
+    .chart {
+      width: 100%;
+      height: clamp(320px, 44vh, 460px);
+      display: block;
+      background: linear-gradient(180deg, rgba(255, 255, 255, 0.9), rgba(248, 246, 241, 0.88));
+      border: 1px solid rgba(20, 33, 43, 0.08);
+      border-radius: 22px;
+    }
+
+    .legend {
+      display: flex;
+      gap: 18px;
+      flex-wrap: wrap;
+      color: var(--muted);
+      font-size: 14px;
+      margin-top: 14px;
+    }
+
+    .legend span {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .swatch {
+      width: 22px;
+      height: 4px;
+      border-radius: 999px;
+      display: inline-block;
+    }
+
+    .evidence-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .callout {
+      margin-top: 18px;
+      padding: 16px 18px;
+      border-left: 4px solid var(--accent-2);
+      border-radius: 16px;
+      background: rgba(217, 119, 6, 0.08);
+    }
+
+    @keyframes rise {
+      from { transform: translateY(12px); opacity: 0; }
+      to { transform: translateY(0); opacity: 1; }
+    }
+
+    @media (max-width: 1080px) {
+      .grid, .cards, .evidence-grid { grid-template-columns: 1fr; }
+      .controls { position: static; }
+    }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <section class="hero">
+      <div class="panel hero-copy">
+        <div class="eyebrow">Bitcoin Mining • Selfish Mining • Demo Mode</div>
+      </div>
+    </section>
+
+    <div class="grid">
+      <aside class="panel controls">
+        <div class="control-stack">
+          <div class="control">
+            <div class="control-top">
+              <label>Gamma mode</label>
+            </div>
+            <div class="toggle-row">
+              <button id="derivedMode" class="active" type="button">Derived from network</button>
+              <button id="manualMode" type="button">Manual gamma</button>
+            </div>
+          </div>
+
+          <div class="control">
+            <div class="control-top">
+              <label for="alphaRange">Attacker hash share alpha</label>
+              <span class="value" id="alphaValue">0.30</span>
+            </div>
+            <input id="alphaRange" type="range" min="0.05" max="0.49" step="0.01" value="0.30">
+          </div>
+
+          <div class="control">
+            <div class="control-top">
+              <label for="attackerLatencyRange">Attacker latency</label>
+              <span class="value" id="attackerLatencyValue">50 ms</span>
+            </div>
+            <input id="attackerLatencyRange" type="range" min="10" max="140" step="5" value="50">
+          </div>
+
+          <div class="control">
+            <div class="control-top">
+              <label for="honestLatencyRange">Honest latency</label>
+              <span class="value" id="honestLatencyValue">100 ms</span>
+            </div>
+            <input id="honestLatencyRange" type="range" min="40" max="180" step="5" value="100">
+          </div>
+
+          <div class="control">
+            <div class="control-top">
+              <label for="poolRange">Pool size / propagation reach</label>
+              <span class="value" id="poolValue">0.20</span>
+            </div>
+            <input id="poolRange" type="range" min="0" max="0.6" step="0.05" value="0.2">
+          </div>
+
+          <div class="control">
+            <div class="control-top">
+              <label for="manualGammaRange">Manual gamma override</label>
+              <span class="value" id="manualGammaValue">0.53</span>
+            </div>
+            <input id="manualGammaRange" type="range" min="0" max="1" step="0.01" value="0.53">
+          </div>
+        </div>
+      </aside>
+
+      <main class="content">
+        <section class="cards">
+          <article class="card">
+            <div class="metric-value" id="gammaMetric">0.530</div>
+            <div class="metric-sub" id="gammaExplanation">Derived from latency and pool size.</div>
+          </article>
+          <article class="card">
+            <div class="metric-value" id="thresholdMetric">0.242</div>
+            <div class="metric-sub">Profit requires alpha &gt; (1 - gamma) / (3 - 2 gamma).</div>
+          </article>
+          <article class="card">
+            <div class="metric-value" id="revenueMetric">0.298</div>
+            <div class="metric-sub" id="revenueEvidence">Estimated from the nearest simulated gamma curves in Experiment 1.</div>
+          </article>
+          <article class="card">
+            <div class="metric-value" id="profitMetric">Profitable</div>
+            <div class="metric-sub" id="profitSub">The modeled attacker is above its break-even threshold.</div>
+          </article>
+        </section>
+
+        <section class="panel stage">
+          <canvas id="curveChart" class="chart" width="980" height="460"></canvas>
+          <div class="legend">
+            <span><i class="swatch" style="background: var(--accent)"></i>Interpolated simulated revenue</span>
+            <span><i class="swatch" style="background: var(--danger)"></i>Break-even line y = x</span>
+            <span><i class="swatch" style="background: var(--accent-2)"></i>Theoretical threshold</span>
+          </div>
+        </section>
+
+        <section class="panel stage">
+          <canvas id="gammaChart" class="chart" width="980" height="420"></canvas>
+          <div class="legend">
+            <span><i class="swatch" style="background: var(--accent-2)"></i>Gamma implied by attacker latency</span>
+            <span><i class="swatch" style="background: var(--danger)"></i>Current attacker latency</span>
+          </div>
+        </section>
+
+        <section class="evidence-grid">
+          <article class="panel stage">
+            <canvas id="latencyChart" class="chart" width="680" height="390"></canvas>
+            <div class="insight" id="latencyInsight"></div>
+          </article>
+
+          <article class="panel stage">
+            <canvas id="poolChart" class="chart" width="680" height="390"></canvas>
+            <div class="insight" id="poolInsight"></div>
+          </article>
+        </section>
+
+      </main>
+    </div>
+  </div>
+
+  <script>
+    const legacyRows = __LEGACY_DATA__;
+    const latencyRows = __LATENCY_DATA__;
+    const poolRows = __POOL_DATA__;
+
+    const state = {
+      mode: "derived",
+      alpha: 0.30,
+      attackerLatency: 50,
+      honestLatency: 100,
+      poolSize: 0.20,
+      manualGamma: 0.53,
+    };
+
+    const gammaBuckets = [...new Set(legacyRows.map((row) => row.gamma))].sort((a, b) => a - b);
+    const curveByGamma = new Map(
+      gammaBuckets.map((gamma) => [
+        gamma,
+        legacyRows
+          .filter((row) => row.gamma === gamma)
+          .sort((a, b) => a.alpha - b.alpha),
+      ])
+    );
+
+    const controls = {
+      derivedMode: document.getElementById("derivedMode"),
+      manualMode: document.getElementById("manualMode"),
+      alphaRange: document.getElementById("alphaRange"),
+      attackerLatencyRange: document.getElementById("attackerLatencyRange"),
+      honestLatencyRange: document.getElementById("honestLatencyRange"),
+      poolRange: document.getElementById("poolRange"),
+      manualGammaRange: document.getElementById("manualGammaRange"),
+    };
+
+    function gammaFromLatency(attackerLatency, honestLatency, poolSize, baseGamma = 0.5) {
+      const total = Math.max(attackerLatency + honestLatency, 1e-9);
+      const latencyEdge = (honestLatency - attackerLatency) / total;
+      const rawGamma = baseGamma + 0.35 * latencyEdge + 0.15 * poolSize;
+      return Math.max(0, Math.min(1, rawGamma));
+    }
+
+    function theoreticalThreshold(gamma) {
+      return (1 - gamma) / (3 - 2 * gamma);
+    }
+
+    function clamp(value, min, max) {
+      return Math.max(min, Math.min(max, value));
+    }
+
+    function formatFixed(value, digits = 3) {
+      return Number(value).toFixed(digits);
+    }
+
+    function findBoundingGammas(targetGamma) {
+      const clamped = clamp(targetGamma, gammaBuckets[0], gammaBuckets[gammaBuckets.length - 1]);
+      let lower = gammaBuckets[0];
+      let upper = gammaBuckets[gammaBuckets.length - 1];
+
+      for (let index = 0; index < gammaBuckets.length; index += 1) {
+        const gamma = gammaBuckets[index];
+        if (gamma <= clamped) lower = gamma;
+        if (gamma >= clamped) {
+          upper = gamma;
+          break;
+        }
+      }
+
+      return { lower, upper, clamped };
+    }
+
+    function interpolateCurve(targetGamma) {
+      const { lower, upper, clamped } = findBoundingGammas(targetGamma);
+      const lowerRows = curveByGamma.get(lower);
+      const upperRows = curveByGamma.get(upper);
+      const weight = lower === upper ? 0 : (clamped - lower) / (upper - lower);
+
+      return lowerRows.map((row, index) => {
+        const upperRow = upperRows[index];
+        return {
+          alpha: row.alpha,
+          relativeRevenue: row.relative_revenue + (upperRow.relative_revenue - row.relative_revenue) * weight,
+          threshold: theoreticalThreshold(clamped),
+        };
+      });
+    }
+
+    function interpolateValue(points, alpha) {
+      const sorted = [...points].sort((a, b) => a.alpha - b.alpha);
+      if (alpha <= sorted[0].alpha) return sorted[0].relativeRevenue;
+      if (alpha >= sorted[sorted.length - 1].alpha) return sorted[sorted.length - 1].relativeRevenue;
+
+      for (let index = 1; index < sorted.length; index += 1) {
+        const left = sorted[index - 1];
+        const right = sorted[index];
+        if (alpha <= right.alpha) {
+          const t = (alpha - left.alpha) / (right.alpha - left.alpha);
+          return left.relativeRevenue + (right.relativeRevenue - left.relativeRevenue) * t;
+        }
+      }
+      return sorted[sorted.length - 1].relativeRevenue;
+    }
+
+    function nearestRow(rows, key, target) {
+      return rows.reduce((best, row) => {
+        if (!best) return row;
+        return Math.abs(row[key] - target) < Math.abs(best[key] - target) ? row : best;
+      }, null);
+    }
+
+    function drawLineChart(canvas, config) {
+      const ctx = canvas.getContext("2d");
+      const ratio = window.devicePixelRatio || 1;
+      const bounds = canvas.getBoundingClientRect();
+      canvas.width = Math.round(bounds.width * ratio);
+      canvas.height = Math.round(bounds.height * ratio);
+      ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
+
+      const width = bounds.width;
+      const height = bounds.height;
+      const pad = { top: 26, right: 28, bottom: 54, left: 66 };
+      const plotW = width - pad.left - pad.right;
+      const plotH = height - pad.top - pad.bottom;
+
+      const xMin = config.xMin;
+      const xMax = config.xMax;
+      const yMin = config.yMin;
+      const yMax = config.yMax;
+
+      const xMap = (value) => pad.left + ((value - xMin) / (xMax - xMin || 1)) * plotW;
+      const yMap = (value) => pad.top + (1 - (value - yMin) / (yMax - yMin || 1)) * plotH;
+
+      ctx.clearRect(0, 0, width, height);
+      ctx.fillStyle = "#fffdf8";
+      ctx.fillRect(0, 0, width, height);
+
+      ctx.strokeStyle = "rgba(20, 33, 43, 0.10)";
+      ctx.lineWidth = 1;
+      ctx.fillStyle = "#5f6a72";
+      ctx.font = "13px Segoe UI";
+
+      for (let step = 0; step <= 5; step += 1) {
+        const xValue = xMin + ((xMax - xMin) * step) / 5;
+        const px = xMap(xValue);
+        ctx.beginPath();
+        ctx.moveTo(px, pad.top);
+        ctx.lineTo(px, pad.top + plotH);
+        ctx.stroke();
+        ctx.fillText(xValue.toFixed(config.xDigits ?? 2), px - 14, pad.top + plotH + 24);
+      }
+
+      for (let step = 0; step <= 6; step += 1) {
+        const yValue = yMin + ((yMax - yMin) * step) / 6;
+        const py = yMap(yValue);
+        ctx.beginPath();
+        ctx.moveTo(pad.left, py);
+        ctx.lineTo(pad.left + plotW, py);
+        ctx.stroke();
+        ctx.fillText(yValue.toFixed(config.yDigits ?? 2), 18, py + 4);
+      }
+
+      if (config.guides) {
+        config.guides(ctx, xMap, yMap, pad, plotW, plotH);
+      }
+
+      ctx.strokeStyle = config.stroke;
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      config.points.forEach((point, index) => {
+        const px = xMap(point.x);
+        const py = yMap(point.y);
+        if (index === 0) ctx.moveTo(px, py);
+        else ctx.lineTo(px, py);
+      });
+      ctx.stroke();
+
+      ctx.fillStyle = config.stroke;
+      config.points.forEach((point) => {
+        if (!config.showPoints) return;
+        ctx.beginPath();
+        ctx.arc(xMap(point.x), yMap(point.y), 3.5, 0, Math.PI * 2);
+        ctx.fill();
+      });
+
+      ctx.fillStyle = "#14212b";
+      ctx.font = "14px Segoe UI";
+      ctx.fillText(config.xLabel, pad.left + plotW / 2 - 54, height - 14);
+      ctx.save();
+      ctx.translate(18, pad.top + plotH / 2 + 54);
+      ctx.rotate(-Math.PI / 2);
+      ctx.fillText(config.yLabel, 0, 0);
+      ctx.restore();
+    }
+
+    function render() {
+      const gamma = state.mode === "derived"
+        ? gammaFromLatency(state.attackerLatency, state.honestLatency, state.poolSize)
+        : state.manualGamma;
+
+      const threshold = theoreticalThreshold(gamma);
+      const curve = interpolateCurve(gamma);
+      const revenue = interpolateValue(curve, state.alpha);
+      const profitable = revenue > state.alpha;
+      const visibleGamma = clamp(gamma, gammaBuckets[0], gammaBuckets[gammaBuckets.length - 1]);
+
+      document.getElementById("alphaValue").textContent = formatFixed(state.alpha, 2);
+      document.getElementById("attackerLatencyValue").textContent = `${state.attackerLatency} ms`;
+      document.getElementById("honestLatencyValue").textContent = `${state.honestLatency} ms`;
+      document.getElementById("poolValue").textContent = formatFixed(state.poolSize, 2);
+      document.getElementById("manualGammaValue").textContent = formatFixed(state.manualGamma, 2);
+
+      document.getElementById("gammaMetric").textContent = formatFixed(gamma, 3);
+      document.getElementById("thresholdMetric").textContent = formatFixed(threshold, 3);
+      document.getElementById("revenueMetric").textContent = formatFixed(revenue, 3);
+      document.getElementById("gammaExplanation").textContent = state.mode === "derived"
+        ? "Derived from latency and pool size using the project gamma model."
+        : "Manual override for discussion and what-if storytelling.";
+      document.getElementById("revenueEvidence").textContent =
+        `Interpolated between simulated gamma curves, using visible gamma ${formatFixed(visibleGamma, 2)} from Experiment 1.`;
+
+      const profitMetric = document.getElementById("profitMetric");
+      const profitSub = document.getElementById("profitSub");
+      profitMetric.textContent = profitable ? "Profitable" : "Not profitable";
+      profitMetric.className = `metric-value ${profitable ? "profit-good" : "profit-bad"}`;
+      profitSub.textContent = profitable
+        ? "The modeled attacker is above the break-even threshold."
+        : "The modeled attacker is still below the break-even threshold.";
+
+      drawLineChart(document.getElementById("curveChart"), {
+        xLabel: "Attacker hash share alpha",
+        yLabel: "Relative attacker revenue",
+        xMin: 0.0,
+        xMax: 0.5,
+        yMin: 0.0,
+        yMax: 0.95,
+        stroke: "#0f766e",
+        points: curve.map((row) => ({ x: row.alpha, y: row.relativeRevenue })),
+        showPoints: false,
+        guides: (ctx, xMap, yMap, pad, plotW, plotH) => {
+          ctx.strokeStyle = "#bf1238";
+          ctx.lineWidth = 2;
+          ctx.setLineDash([8, 6]);
+          ctx.beginPath();
+          ctx.moveTo(xMap(0), yMap(0));
+          ctx.lineTo(xMap(0.5), yMap(0.5));
+          ctx.stroke();
+
+          ctx.strokeStyle = "#d97706";
+          ctx.beginPath();
+          ctx.moveTo(xMap(threshold), pad.top);
+          ctx.lineTo(xMap(threshold), pad.top + plotH);
+          ctx.stroke();
+          ctx.setLineDash([]);
+
+          ctx.fillStyle = profitable ? "#166534" : "#bf1238";
+          ctx.beginPath();
+          ctx.arc(xMap(state.alpha), yMap(revenue), 7, 0, Math.PI * 2);
+          ctx.fill();
+
+          ctx.fillStyle = "#14212b";
+          ctx.font = "13px Segoe UI";
+          ctx.fillText(`threshold ${formatFixed(threshold, 3)}`, xMap(threshold) + 8, pad.top + 18);
+          ctx.fillText(`current (${formatFixed(state.alpha, 2)}, ${formatFixed(revenue, 3)})`, xMap(state.alpha) + 10, yMap(revenue) - 10);
+        },
+      });
+
+      const gammaPoints = [];
+      for (let latency = 10; latency <= 140; latency += 5) {
+        gammaPoints.push({
+          x: latency,
+          y: gammaFromLatency(latency, state.honestLatency, state.poolSize),
+        });
+      }
+
+      drawLineChart(document.getElementById("gammaChart"), {
+        xLabel: "Attacker latency (ms)",
+        yLabel: "Gamma",
+        xMin: 10,
+        xMax: 140,
+        yMin: 0,
+        yMax: 1,
+        stroke: "#d97706",
+        points: gammaPoints,
+        showPoints: false,
+        xDigits: 0,
+        guides: (ctx, xMap, yMap, pad, plotW, plotH) => {
+          ctx.strokeStyle = "#bf1238";
+          ctx.lineWidth = 2;
+          ctx.setLineDash([7, 5]);
+          ctx.beginPath();
+          ctx.moveTo(xMap(state.attackerLatency), pad.top);
+          ctx.lineTo(xMap(state.attackerLatency), pad.top + plotH);
+          ctx.stroke();
+          ctx.setLineDash([]);
+
+          const currentGamma = gammaFromLatency(state.attackerLatency, state.honestLatency, state.poolSize);
+          ctx.fillStyle = "#bf1238";
+          ctx.beginPath();
+          ctx.arc(xMap(state.attackerLatency), yMap(currentGamma), 6, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.fillText(`gamma ${formatFixed(currentGamma, 3)}`, xMap(state.attackerLatency) + 10, yMap(currentGamma) - 10);
+        },
+      });
+
+      drawLineChart(document.getElementById("latencyChart"), {
+        xLabel: "Attacker latency (ms)",
+        yLabel: "Relative revenue",
+        xMin: Math.min(...latencyRows.map((row) => row.attacker_latency_ms)),
+        xMax: Math.max(...latencyRows.map((row) => row.attacker_latency_ms)),
+        yMin: 0.17,
+        yMax: 0.22,
+        stroke: "#0f766e",
+        points: latencyRows.map((row) => ({ x: row.attacker_latency_ms, y: row.relative_revenue })),
+        showPoints: true,
+        xDigits: 0,
+        yDigits: 3,
+        guides: (ctx, xMap, yMap, pad, plotW, plotH) => {
+          const highlight = nearestRow(latencyRows, "attacker_latency_ms", state.attackerLatency);
+          ctx.strokeStyle = "#bf1238";
+          ctx.lineWidth = 2;
+          ctx.setLineDash([6, 5]);
+          ctx.beginPath();
+          ctx.moveTo(xMap(latencyRows[0].attacker_latency_ms), yMap(highlight.alpha));
+          ctx.lineTo(xMap(latencyRows[latencyRows.length - 1].attacker_latency_ms), yMap(highlight.alpha));
+          ctx.stroke();
+          ctx.setLineDash([]);
+
+          ctx.fillStyle = highlight.profitable ? "#166534" : "#bf1238";
+          ctx.beginPath();
+          ctx.arc(xMap(highlight.attacker_latency_ms), yMap(highlight.relative_revenue), 6, 0, Math.PI * 2);
+          ctx.fill();
+        },
+      });
+
+      const nearestLatency = nearestRow(latencyRows, "attacker_latency_ms", state.attackerLatency);
+      document.getElementById("latencyInsight").textContent =
+        `Closest recorded point: attacker latency ${nearestLatency.attacker_latency_ms.toFixed(0)} ms, gamma ${nearestLatency.gamma.toFixed(3)}, revenue ${nearestLatency.relative_revenue.toFixed(3)}.`;
+
+      drawLineChart(document.getElementById("poolChart"), {
+        xLabel: "Pool size",
+        yLabel: "Relative revenue",
+        xMin: Math.min(...poolRows.map((row) => row.pool_size)),
+        xMax: Math.max(...poolRows.map((row) => row.pool_size)),
+        yMin: 0.19,
+        yMax: 0.205,
+        stroke: "#0f766e",
+        points: poolRows.map((row) => ({ x: row.pool_size, y: row.relative_revenue })),
+        showPoints: true,
+        yDigits: 3,
+        guides: (ctx, xMap, yMap, pad, plotW, plotH) => {
+          const highlight = nearestRow(poolRows, "pool_size", state.poolSize);
+          ctx.strokeStyle = "#bf1238";
+          ctx.lineWidth = 2;
+          ctx.setLineDash([6, 5]);
+          ctx.beginPath();
+          ctx.moveTo(xMap(poolRows[0].pool_size), yMap(highlight.alpha));
+          ctx.lineTo(xMap(poolRows[poolRows.length - 1].pool_size), yMap(highlight.alpha));
+          ctx.stroke();
+          ctx.setLineDash([]);
+
+          ctx.fillStyle = highlight.profitable ? "#166534" : "#bf1238";
+          ctx.beginPath();
+          ctx.arc(xMap(highlight.pool_size), yMap(highlight.relative_revenue), 6, 0, Math.PI * 2);
+          ctx.fill();
+        },
+      });
+
+      const nearestPool = nearestRow(poolRows, "pool_size", state.poolSize);
+      document.getElementById("poolInsight").textContent =
+        `Closest recorded point: pool size ${nearestPool.pool_size.toFixed(2)}, gamma ${nearestPool.gamma.toFixed(3)}, revenue ${nearestPool.relative_revenue.toFixed(3)}.`;
+
+      controls.manualGammaRange.disabled = state.mode !== "manual";
+      controls.manualGammaRange.style.opacity = state.mode === "manual" ? "1" : "0.45";
+      controls.derivedMode.classList.toggle("active", state.mode === "derived");
+      controls.manualMode.classList.toggle("active", state.mode === "manual");
+    }
+
+    controls.derivedMode.addEventListener("click", () => {
+      state.mode = "derived";
+      render();
+    });
+    controls.manualMode.addEventListener("click", () => {
+      state.mode = "manual";
+      render();
+    });
+
+    controls.alphaRange.addEventListener("input", (event) => {
+      state.alpha = Number(event.target.value);
+      render();
+    });
+    controls.attackerLatencyRange.addEventListener("input", (event) => {
+      state.attackerLatency = Number(event.target.value);
+      render();
+    });
+    controls.honestLatencyRange.addEventListener("input", (event) => {
+      state.honestLatency = Number(event.target.value);
+      render();
+    });
+    controls.poolRange.addEventListener("input", (event) => {
+      state.poolSize = Number(event.target.value);
+      render();
+    });
+    controls.manualGammaRange.addEventListener("input", (event) => {
+      state.manualGamma = Number(event.target.value);
+      render();
+    });
+
+    window.addEventListener("resize", render);
+    render();
+  </script>
+</body>
+</html>
