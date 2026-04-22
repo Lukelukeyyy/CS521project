@@ -210,3 +210,35 @@ def latency_sweep(*, alpha, honest_latency_ms, latency_values,
 
     return rows
 
+# pool sweep function to test multiple pool size values - experiment 3
+def pool_sweep(*, alpha, attacker_latency_ms, honest_latency_ms,
+               pool_values, blocks, trials, seed):
+    # Fix alpha and latency, then sweep pool size.
+    rows = []
+
+    for pool_index, pool_size in enumerate(pool_values):
+        gamma = gamma_from_latency(
+            attacker_latency_ms,
+            honest_latency_ms,
+            pool_size=pool_size,
+        )
+
+        trial_seed = None
+        if seed is not None:
+            trial_seed = seed + pool_index * 1000
+
+        config = SimulationConfig(
+            alpha=alpha,
+            gamma=gamma,
+            blocks=blocks,
+            seed=trial_seed,
+            attacker_latency_ms=attacker_latency_ms,
+            honest_latency_ms=honest_latency_ms,
+            pool_size=pool_size,
+            experiment="pool_sweep",
+            sweep_value=pool_size,
+        )
+        rows.append(run_trials(config, trials))
+
+    return rows
+
