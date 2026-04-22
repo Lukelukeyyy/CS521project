@@ -31,6 +31,8 @@ def write_html(path, rows):
 
     if experiment == "latency_sweep":
         template_name = "chart_template_latency.html"
+    elif experiment == "pool_sweep":
+        template_name = "chart_template_pool.html"
     else:
         template_name = "chart_template_legacy.html"
 

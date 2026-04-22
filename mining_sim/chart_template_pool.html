@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Experiment 2: Latency Sweep</title>
+  <title>Experiment 3: Pool Size Sweep</title>
   <style>
     :root {
       color-scheme: light;
@@ -103,14 +103,14 @@
 </head>
 <body>
   <header>
-    <h1>Experiment 2: Latency Sweep</h1>
-    <p>Alpha and pool size are fixed. Attacker latency changes gamma first, and gamma then changes the attacker's relative revenue.</p>
+    <h1>Experiment 3: Pool Size Sweep</h1>
+    <p>Alpha and latency are fixed. Pool size changes gamma first, and gamma then changes the attacker's relative revenue.</p>
   </header>
 
   <main>
     <section class="chart-block">
-      <h2 class="chart-title">Relative Revenue vs Attacker Latency</h2>
-      <p class="chart-desc">This plot shows the final effect of latency changes on attacker revenue.</p>
+      <h2 class="chart-title">Relative Revenue vs Pool Size</h2>
+      <p class="chart-desc">This plot shows the final effect of pool size changes on attacker revenue.</p>
       <div class="chart-wrap">
         <canvas id="revenueChart" width="1100" height="460"></canvas>
       </div>
@@ -120,13 +120,13 @@
     </section>
 
     <section class="chart-block">
-      <h2 class="chart-title">Gamma vs Attacker Latency</h2>
-      <p class="chart-desc">This helper plot shows the mechanism: attacker latency changes gamma first, and gamma then affects revenue.</p>
+      <h2 class="chart-title">Gamma vs Pool Size</h2>
+      <p class="chart-desc">This helper plot shows the mechanism: pool size changes gamma first, and gamma then affects revenue.</p>
       <div class="chart-wrap">
         <canvas id="gammaChart" width="1100" height="460"></canvas>
       </div>
       <div class="legend">
-        <span class="key"><span class="swatch gold"></span>Gamma implied by latency</span>
+        <span class="key"><span class="swatch gold"></span>Gamma implied by pool size</span>
       </div>
     </section>
   </main>
@@ -199,7 +199,7 @@
 
       ctx.fillStyle = "#17202a";
       ctx.font = "14px Arial";
-      ctx.fillText(config.xLabel, pad.left + plotW / 2 - 60, height - 14);
+      ctx.fillText(config.xLabel, pad.left + plotW / 2 - 40, height - 14);
 
       ctx.save();
       ctx.translate(18, pad.top + plotH / 2 + 60);
@@ -239,17 +239,17 @@
       const sortedRows = sortRows(rows);
 
       const revenuePoints = sortedRows.map((row) => ({
-        x: row.attackerLatency,
+        x: row.poolSize,
         y: row.relativeRevenue
       }));
 
       const gammaPoints = sortedRows.map((row) => ({
-        x: row.attackerLatency,
+        x: row.poolSize,
         y: row.gamma
       }));
 
       drawLineChart(revenueCanvas, {
-        xLabel: "Attacker latency (ms)",
+        xLabel: "Pool size",
         yLabel: "Relative attacker revenue",
         xMin: Math.min(...revenuePoints.map(p => p.x)),
         xMax: Math.max(...revenuePoints.map(p => p.x)),
@@ -283,7 +283,7 @@
       });
 
       drawLineChart(gammaCanvas, {
-        xLabel: "Attacker latency (ms)",
+        xLabel: "Pool size",
         yLabel: "Gamma",
         xMin: Math.min(...gammaPoints.map(p => p.x)),
         xMax: Math.max(...gammaPoints.map(p => p.x)),
