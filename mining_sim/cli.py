@@ -3,7 +3,7 @@ from pathlib import Path
 
 from mining_sim.model import gamma_from_latency, theoretical_threshold
 from mining_sim.output import write_csv
-from mining_sim.simulation import sweep, latency_sweep
+from mining_sim.simulation import sweep, latency_sweep, pool_sweep
 from mining_sim.visualization import write_html
 
 
@@ -52,8 +52,8 @@ def build_parser():
     parser.add_argument("--seed", type=int, default=521, help="random seed")
     parser.add_argument("--csv", type=Path, default=Path("results/selfish_mining_sweep.csv"))
     parser.add_argument("--html", type=Path, default=Path("results/selfish_mining_chart.html"))
-    parser.add_argument("--experiment", choices=["legacy", "latency"], default="legacy")
-    parser.add_argument("--alpha", type=float, default=0.30, help="fixed alpha for latency sweep")
+    parser.add_argument("--experiment", choices=["legacy", "latency", "pool"], default="legacy")
+    parser.add_argument("--alpha", type=float, default=0.30, help="fixed alpha for latency and pool sweep")
     parser.add_argument("--pool-size", type=float, default=None, help="attacker pool share for latency mode")
     parser.add_argument("--attacker-latency-ms", type=float, default=None)
     parser.add_argument("--honest-latency-ms", type=float, default=None)
@@ -108,6 +108,23 @@ def main():
             honest_latency_ms=args.honest_latency_ms,
             latency_values=args.latency_values,
             pool_size=pool_size,
+            blocks=args.blocks,
+            trials=args.trials,
+            seed=args.seed,
+        )
+
+    # experiment 3: pool sweep
+    elif args.experiment == "pool":
+        if args.attacker_latency_ms is None or args.honest_latency_ms is None:
+            parser.error("pool experiment requires both --attacker-latency-ms and --honest-latency-ms")
+        if args.pool_values is None:
+            parser.error("pool experiment requires --pool-values")
+
+        simulation_results = pool_sweep(
+            alpha=args.alpha,
+            attacker_latency_ms=args.attacker_latency_ms,
+            honest_latency_ms=args.honest_latency_ms,
+            pool_values=args.pool_values,
             blocks=args.blocks,
             trials=args.trials,
             seed=args.seed,
