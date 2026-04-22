@@ -2,7 +2,7 @@ import random
 import math
 from statistics import mean
 
-from mining_sim.model import SimulationConfig, SimulationResult
+from mining_sim.model import SimulationConfig, SimulationResult, gamma_from_latency
 
 # -------------- selfish mining simulator ---------------------
 def validate_config(config):
@@ -89,8 +89,13 @@ def build_simulation_result(config, private_chain_lead, attacker_revenue, honest
     revenue_gain = relative_revenue - config.alpha
 
     return SimulationResult(alpha=config.alpha, gamma=config.gamma, blocks=config.blocks,
-            attacker_revenue=attacker_revenue, honest_revenue=honest_revenue, orphaned_blocks=orphaned_blocks,
-            relative_revenue=relative_revenue, revenue_gain=revenue_gain, profitable=revenue_gain > 0)
+                            attacker_revenue=attacker_revenue, honest_revenue=honest_revenue,
+                            orphaned_blocks=orphaned_blocks, relative_revenue=relative_revenue,
+                            revenue_gain=revenue_gain, profitable=revenue_gain > 0,
+                            attacker_latency_ms=config.attacker_latency_ms,
+                            honest_latency_ms=config.honest_latency_ms,
+                            pool_size=config.pool_size, experiment=config.experiment,
+                            sweep_value=config.sweep_value)
 
 
 def simulate_selfish_mining(config):
@@ -140,7 +145,11 @@ def run_trials(config, trials):
             trial_seed = config.seed + trial_number
 
         trial_config = SimulationConfig(alpha=config.alpha, gamma=config.gamma,
-                                        blocks=config.blocks, seed=trial_seed)
+                                        blocks=config.blocks, seed=trial_seed,
+                                        attacker_latency_ms=config.attacker_latency_ms,
+                                        honest_latency_ms=config.honest_latency_ms,
+                                        pool_size=config.pool_size, experiment=config.experiment,
+                                        sweep_value=config.sweep_value )
         results.append(simulate_selfish_mining(trial_config))
 
     attacker_revenue = round(mean(r.attacker_revenue for r in results))
@@ -152,9 +161,13 @@ def run_trials(config, trials):
     return SimulationResult(alpha=config.alpha, gamma=config.gamma, blocks=config.blocks,
                             attacker_revenue=attacker_revenue, honest_revenue=honest_revenue,
                             orphaned_blocks=orphaned_blocks, relative_revenue=relative_revenue,
-                            revenue_gain=revenue_gain, profitable=revenue_gain > 0)
+                            revenue_gain=revenue_gain, profitable=revenue_gain > 0,
+                            attacker_latency_ms=config.attacker_latency_ms,
+                            honest_latency_ms=config.honest_latency_ms,
+                            pool_size=config.pool_size, experiment=config.experiment,
+                            sweep_value=config.sweep_value)
 
-# sweep function to test multiple alpha and gamma values
+# sweep function to test multiple alpha and gamma values(baseline) - experiment 1
 def sweep(gammas, *, blocks, trials, seed, alpha_step):
     # Test many alpha values so we can find where the attack becomes profitable.
     rows = []
@@ -167,9 +180,33 @@ def sweep(gammas, *, blocks, trials, seed, alpha_step):
             if seed is not None:
                 trial_seed = seed + gamma_index * 100_000 + step * 100
 
-            config = SimulationConfig(alpha=alpha, gamma=gamma, blocks=blocks, seed=trial_seed)
+            config = SimulationConfig(alpha=alpha, gamma=gamma, blocks=blocks, seed=trial_seed,
+                                      experiment="legacy", sweep_value=alpha)
             result = run_trials(config, trials=trials)
             rows.append(result)
+
+    return rows
+
+def latency_sweep(*, alpha, honest_latency_ms, latency_values,
+                  pool_size, blocks, trials, seed):
+    # Fix alpha and pool size, then sweep attacker latency.
+    rows = []
+
+    for latency_index, attacker_latency_ms in enumerate(latency_values):
+        gamma = gamma_from_latency(
+            attacker_latency_ms,
+            honest_latency_ms,
+            pool_size=pool_size,
+        )
+
+        trial_seed = None
+        if seed is not None:
+            trial_seed = seed + latency_index * 1000
+
+        config = SimulationConfig(alpha=alpha, gamma=gamma, blocks=blocks, seed=trial_seed,
+                                  attacker_latency_ms=attacker_latency_ms, honest_latency_ms=honest_latency_ms,
+                                  pool_size=pool_size, experiment="latency_sweep", sweep_value=attacker_latency_ms)
+        rows.append(run_trials(config, trials))
 
     return rows
 

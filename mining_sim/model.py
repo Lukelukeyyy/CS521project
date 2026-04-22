@@ -1,7 +1,7 @@
 class SimulationConfig:
     def __init__(self, alpha, gamma, blocks, seed=None,
                  attacker_latency_ms=None, honest_latency_ms=None,
-                 pool_size=None, experiment=None, sweep_value=None ):
+                 pool_size=None, experiment=None, sweep_value=None):
         # Store one simulation setup.
         self.alpha = alpha
         self.gamma = gamma
@@ -16,10 +16,9 @@ class SimulationConfig:
 
 class SimulationResult:
     def __init__(self, alpha, gamma, blocks, attacker_revenue, honest_revenue,
-                 orphaned_blocks, relative_revenue,revenue_gain,profitable,
+                 orphaned_blocks, relative_revenue, revenue_gain, profitable,
                  attacker_latency_ms=None, honest_latency_ms=None,
-                 pool_size=None, experiment=None, sweep_value=None ):
-        
+                 pool_size=None, experiment=None, sweep_value=None):
         # Store one simulation result.
         self.alpha = alpha
         self.gamma = gamma
@@ -44,8 +43,7 @@ def theoretical_threshold(gamma):
     return (1 - gamma) / (3 - 2 * gamma)
 
 
-def gamma_from_latency(attacker_latency_ms, honest_latency_ms, *, pool_size=0.0, base_gamma=0.5,):
-
+def gamma_from_latency(attacker_latency_ms, honest_latency_ms, *, pool_size=0.0, base_gamma=0.5, ):
     # Convert latency and pool reach into an estimated gamma value.
     if attacker_latency_ms < 0 or honest_latency_ms < 0:
         raise ValueError("latencies must be non-negative")
