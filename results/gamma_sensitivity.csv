@@ -1,0 +1,4 @@
+setting,latency_weight,pool_weight,exp2_gamma_fast_latency,exp2_gamma_slow_latency,exp2_threshold_fast_latency,exp2_threshold_slow_latency,exp3_gamma_low_pool,exp3_gamma_high_pool,exp3_threshold_low_pool,exp3_threshold_high_pool
+conservative,0.250000,0.100000,0.686667,0.520000,0.192623,0.244898,0.583333,0.633333,0.227273,0.211538
+baseline,0.350000,0.150000,0.763333,0.530000,0.160633,0.242268,0.616667,0.691667,0.216981,0.190722
+aggressive,0.450000,0.200000,0.840000,0.540000,0.121212,0.239583,0.650000,0.750000,0.205882,0.166667

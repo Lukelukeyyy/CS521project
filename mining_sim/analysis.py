@@ -1,9 +1,14 @@
-"""Post-processing helpers for validation and calibration analysis."""
-
 import csv
 from collections import defaultdict
 
-from mining_sim.model import theoretical_threshold
+from mining_sim.model import gamma_from_latency, theoretical_threshold
+
+
+DEFAULT_WEIGHT_SETTINGS = [
+    ("conservative", 0.25, 0.10),
+    ("baseline", 0.35, 0.15),
+    ("aggressive", 0.45, 0.20),
+]
 
 
 def read_results_csv(path):
@@ -68,6 +73,72 @@ def estimate_threshold_residuals(rows):
     return residual_rows
 
 
+def gamma_mapping_sensitivity(
+    weight_settings=None,
+    *,
+    latency_attacker_min_ms=20.0,
+    latency_attacker_max_ms=100.0,
+    latency_honest_ms=100.0,
+    latency_pool_size=0.20,
+    pool_attacker_latency_ms=50.0,
+    pool_honest_latency_ms=100.0,
+    pool_min=0.0,
+    pool_max=0.5,
+):
+    # Compute Exp2/Exp3 gamma and threshold endpoints for alternative weights.
+    if weight_settings is None:
+        weight_settings = DEFAULT_WEIGHT_SETTINGS
+
+    rows = []
+    for setting_name, latency_weight, pool_weight in weight_settings:
+        exp2_gamma_fast = gamma_from_latency(
+            latency_attacker_min_ms,
+            latency_honest_ms,
+            pool_size=latency_pool_size,
+            latency_weight=latency_weight,
+            pool_weight=pool_weight,
+        )
+        exp2_gamma_slow = gamma_from_latency(
+            latency_attacker_max_ms,
+            latency_honest_ms,
+            pool_size=latency_pool_size,
+            latency_weight=latency_weight,
+            pool_weight=pool_weight,
+        )
+        exp3_gamma_low = gamma_from_latency(
+            pool_attacker_latency_ms,
+            pool_honest_latency_ms,
+            pool_size=pool_min,
+            latency_weight=latency_weight,
+            pool_weight=pool_weight,
+        )
+        exp3_gamma_high = gamma_from_latency(
+            pool_attacker_latency_ms,
+            pool_honest_latency_ms,
+            pool_size=pool_max,
+            latency_weight=latency_weight,
+            pool_weight=pool_weight,
+        )
+
+        rows.append(
+            {
+                "setting": setting_name,
+                "latency_weight": latency_weight,
+                "pool_weight": pool_weight,
+                "exp2_gamma_fast_latency": exp2_gamma_fast,
+                "exp2_gamma_slow_latency": exp2_gamma_slow,
+                "exp2_threshold_fast_latency": theoretical_threshold(exp2_gamma_fast),
+                "exp2_threshold_slow_latency": theoretical_threshold(exp2_gamma_slow),
+                "exp3_gamma_low_pool": exp3_gamma_low,
+                "exp3_gamma_high_pool": exp3_gamma_high,
+                "exp3_threshold_low_pool": theoretical_threshold(exp3_gamma_low),
+                "exp3_threshold_high_pool": theoretical_threshold(exp3_gamma_high),
+            }
+        )
+
+    return rows
+
+
 def write_dict_csv(path, rows):
     # Write analysis dictionaries to CSV.
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -91,7 +162,9 @@ def write_dict_csv(path, rows):
 
 
 __all__ = [
+    "DEFAULT_WEIGHT_SETTINGS",
     "estimate_threshold_residuals",
+    "gamma_mapping_sensitivity",
     "interpolate_zero_crossing",
     "read_results_csv",
     "write_dict_csv",

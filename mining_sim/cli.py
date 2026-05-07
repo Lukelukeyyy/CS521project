@@ -3,6 +3,7 @@ from pathlib import Path
 
 from mining_sim.analysis import (
     estimate_threshold_residuals,
+    gamma_mapping_sensitivity,
     read_results_csv,
     write_dict_csv,
 )
@@ -58,7 +59,7 @@ def build_parser():
     parser.add_argument("--input-csv", type=Path, default=Path("results/exp1_legacy.csv"),
                         help="input CSV for threshold residual analysis")
     parser.add_argument("--experiment",
-                        choices=["legacy", "latency", "pool", "threshold_residuals"],
+                        choices=["legacy", "latency", "pool", "threshold_residuals", "sensitivity"],
                         default="legacy")
     parser.add_argument("--alpha", type=float, default=0.30, help="fixed alpha for latency and pool sweep")
     parser.add_argument("--pool-size", type=float, default=None, help="attacker pool share for latency mode")
@@ -84,6 +85,17 @@ def main():
             print(
                 "gamma={gamma:.3f} closed_form={closed_form_threshold:.6f} "
                 "empirical={empirical_threshold:.6f} residual={residual:+.6f}".format(**row)
+            )
+        return
+
+    if args.experiment == "sensitivity":
+        sensitivity_rows = gamma_mapping_sensitivity()
+        write_dict_csv(args.csv, sensitivity_rows)
+        print(f"wrote {args.csv}")
+
+        for row in sensitivity_rows:
+            print(
+                "{setting}: latency_weight={latency_weight:.2f} pool_weight={pool_weight:.2f}".format(**row)
             )
         return
 
