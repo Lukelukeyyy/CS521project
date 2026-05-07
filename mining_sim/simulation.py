@@ -1,8 +1,51 @@
 import random
 import math
-from statistics import mean
+from statistics import mean, stdev
 
 from mining_sim.model import SimulationConfig, SimulationResult, gamma_from_latency
+
+T_CRITICAL_95 = {
+    1: 12.706,
+    2: 4.303,
+    3: 3.182,
+    4: 2.776,
+    5: 2.571,
+    6: 2.447,
+    7: 2.365,
+    8: 2.306,
+    9: 2.262,
+    10: 2.228,
+    11: 2.201,
+    12: 2.179,
+    13: 2.160,
+    14: 2.145,
+    15: 2.131,
+    16: 2.120,
+    17: 2.110,
+    18: 2.101,
+    19: 2.093,
+    20: 2.086,
+    21: 2.080,
+    22: 2.074,
+    23: 2.069,
+    24: 2.064,
+    25: 2.060,
+    26: 2.056,
+    27: 2.052,
+    28: 2.048,
+    29: 2.045,
+    30: 2.042,
+}
+
+
+def confidence_interval_95(values):
+    # Student-t confidence interval half-width for trial-level metrics.
+    if len(values) < 2:
+        return 0.0
+
+    degrees_of_freedom = len(values) - 1
+    t_critical = T_CRITICAL_95.get(degrees_of_freedom, 1.960)
+    return t_critical * stdev(values) / math.sqrt(len(values))
 
 # -------------- selfish mining simulator ---------------------
 def validate_config(config):
@@ -158,13 +201,20 @@ def run_trials(config, trials):
     attacker_revenue = round(mean(r.attacker_revenue for r in results))
     honest_revenue = round(mean(r.honest_revenue for r in results))
     orphaned_blocks = round(mean(r.orphaned_blocks for r in results))
-    relative_revenue = mean(r.relative_revenue for r in results)
+    relative_revenues = [r.relative_revenue for r in results]
+    relative_revenue = mean(relative_revenues)
     revenue_gain = relative_revenue - config.alpha
+    relative_revenue_std = stdev(relative_revenues) if len(relative_revenues) > 1 else 0.0
+    relative_revenue_ci95 = confidence_interval_95(relative_revenues)
 
     return SimulationResult(alpha=config.alpha, gamma=config.gamma, blocks=config.blocks,
                             attacker_revenue=attacker_revenue, honest_revenue=honest_revenue,
                             orphaned_blocks=orphaned_blocks, relative_revenue=relative_revenue,
                             revenue_gain=revenue_gain, profitable=revenue_gain > 0,
+                            trials=trials, relative_revenue_std=relative_revenue_std,
+                            relative_revenue_ci95=relative_revenue_ci95,
+                            revenue_gain_std=relative_revenue_std,
+                            revenue_gain_ci95=relative_revenue_ci95,
                             attacker_latency_ms=config.attacker_latency_ms,
                             honest_latency_ms=config.honest_latency_ms,
                             pool_size=config.pool_size, experiment=config.experiment,
@@ -244,4 +294,3 @@ def pool_sweep(*, alpha, attacker_latency_ms, honest_latency_ms,
         rows.append(run_trials(config, trials))
 
     return rows
-

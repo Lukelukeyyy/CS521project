@@ -1,5 +1,3 @@
-"""CSV output for simulator results."""
-
 import csv
 
 from mining_sim.model import theoretical_threshold
@@ -22,11 +20,16 @@ def write_csv(path, rows):
                 "honest_latency_ms",
                 "pool_size",
                 "relative_revenue",
+                "relative_revenue_std",
+                "relative_revenue_ci95",
                 "revenue_gain",
+                "revenue_gain_std",
+                "revenue_gain_ci95",
                 "profitable",
                 "attacker_revenue",
                 "honest_revenue",
                 "orphaned_blocks",
+                "trials",
                 "blocks",
             ],
         )
@@ -50,11 +53,16 @@ def write_csv(path, rows):
                     "pool_size": f"{row.pool_size:.6f}" if row.pool_size is not None else "",
 
                     "relative_revenue": f"{row.relative_revenue:.6f}",
+                    "relative_revenue_std": f"{row.relative_revenue_std:.6f}",
+                    "relative_revenue_ci95": f"{row.relative_revenue_ci95:.6f}",
                     "revenue_gain": f"{row.revenue_gain:.6f}",
+                    "revenue_gain_std": f"{row.revenue_gain_std:.6f}",
+                    "revenue_gain_ci95": f"{row.revenue_gain_ci95:.6f}",
                     "profitable": row.profitable,
                     "attacker_revenue": row.attacker_revenue,
                     "honest_revenue": row.honest_revenue,
                     "orphaned_blocks": row.orphaned_blocks,
+                    "trials": row.trials,
                     "blocks": row.blocks,
                 }
             )

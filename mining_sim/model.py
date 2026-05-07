@@ -17,6 +17,8 @@ class SimulationConfig:
 class SimulationResult:
     def __init__(self, alpha, gamma, blocks, attacker_revenue, honest_revenue,
                  orphaned_blocks, relative_revenue, revenue_gain, profitable,
+                 trials=1, relative_revenue_std=0.0, relative_revenue_ci95=0.0,
+                 revenue_gain_std=0.0, revenue_gain_ci95=0.0,
                  attacker_latency_ms=None, honest_latency_ms=None,
                  pool_size=None, experiment=None, sweep_value=None):
         # Store one simulation result.
@@ -29,6 +31,11 @@ class SimulationResult:
         self.relative_revenue = relative_revenue
         self.revenue_gain = revenue_gain
         self.profitable = profitable
+        self.trials = trials
+        self.relative_revenue_std = relative_revenue_std
+        self.relative_revenue_ci95 = relative_revenue_ci95
+        self.revenue_gain_std = revenue_gain_std
+        self.revenue_gain_ci95 = revenue_gain_ci95
         self.attacker_latency_ms = attacker_latency_ms
         self.honest_latency_ms = honest_latency_ms
         self.pool_size = pool_size

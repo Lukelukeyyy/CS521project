@@ -244,10 +244,15 @@ The main experiment CSV files contain these columns:
 | `honest_latency_ms` | Honest network latency in milliseconds |
 | `pool_size` | Attacker pool share |
 | `relative_revenue` | Attacker accepted-block share |
+| `relative_revenue_std` | Sample standard deviation of relative revenue across trials |
+| `relative_revenue_ci95` | 95% Student-t confidence interval half-width for relative revenue |
 | `revenue_gain` | `relative_revenue - alpha` |
+| `revenue_gain_std` | Sample standard deviation of revenue gain across trials |
+| `revenue_gain_ci95` | 95% Student-t confidence interval half-width for revenue gain |
 | `profitable` | Whether the attacker earns more than its hash-rate share |
 | `attacker_revenue` | Accepted blocks credited to the attacker |
 | `honest_revenue` | Accepted blocks credited to honest miners |
+| `trials` | Monte Carlo trials averaged for the row |
 | `orphaned_blocks` | Blocks wasted through forks or orphaning |
 | `blocks` | Number of simulated mining events |
 
