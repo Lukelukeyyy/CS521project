@@ -1,6 +1,6 @@
-# Topic 6: Bitcoin Mining and Selfish Mining
+# Topic 6: Bitcoin Mining and Selfish Mining -- CS521
 
-This project is a CS521 simulator and analysis for Bitcoin selfish mining. It uses simulation to study how attacker hash rate, tie-breaking behavior, network latency, and mining pool size affect selfish mining profitability.
+This project is a simulator and analysis for Bitcoin selfish mining. It uses simulation to study how attacker hash rate, tie-breaking behavior, network latency, and mining pool size affect selfish mining profitability.
 
 The simulator exports CSV files, and the main experimental results can be combined into an interactive dashboard:
 
