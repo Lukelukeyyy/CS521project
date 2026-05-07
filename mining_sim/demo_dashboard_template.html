@@ -363,6 +363,15 @@
           </div>
         </section>
 
+        <section class="panel stage">
+          <canvas id="poolGammaChart" class="chart" width="980" height="420"></canvas>
+          <div class="legend">
+            <span><i class="swatch" style="background: var(--accent-2)"></i>Gamma implied by pool size</span>
+            <span><i class="swatch" style="background: var(--danger)"></i>Current pool size</span>
+          </div>
+          <div class="insight" id="poolGammaInsight"></div>
+        </section>
+
         <section class="evidence-grid">
           <article class="panel stage">
             <canvas id="latencyChart" class="chart" width="680" height="390"></canvas>
@@ -681,6 +690,50 @@
           ctx.fillText(`gamma ${formatFixed(currentGamma, 3)}`, xMap(state.attackerLatency) + 10, yMap(currentGamma) - 10);
         },
       });
+
+      const poolGammaPoints = [];
+      for (let poolSize = 0; poolSize <= 0.6; poolSize += 0.025) {
+        poolGammaPoints.push({
+          x: poolSize,
+          y: gammaFromLatency(state.attackerLatency, state.honestLatency, poolSize),
+        });
+      }
+
+      drawLineChart(document.getElementById("poolGammaChart"), {
+        xLabel: "Pool size",
+        yLabel: "Gamma",
+        xMin: 0,
+        xMax: 0.6,
+        yMin: 0,
+        yMax: 1,
+        stroke: "#d97706",
+        points: poolGammaPoints,
+        showPoints: false,
+        xDigits: 2,
+        guides: (ctx, xMap, yMap, pad, plotW, plotH) => {
+          ctx.strokeStyle = "#bf1238";
+          ctx.lineWidth = 2;
+          ctx.setLineDash([7, 5]);
+          ctx.beginPath();
+          ctx.moveTo(xMap(state.poolSize), pad.top);
+          ctx.lineTo(xMap(state.poolSize), pad.top + plotH);
+          ctx.stroke();
+          ctx.setLineDash([]);
+
+          const currentGamma = gammaFromLatency(state.attackerLatency, state.honestLatency, state.poolSize);
+          ctx.fillStyle = "#bf1238";
+          ctx.beginPath();
+          ctx.arc(xMap(state.poolSize), yMap(currentGamma), 6, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.fillText(`gamma ${formatFixed(currentGamma, 3)}`, xMap(state.poolSize) + 10, yMap(currentGamma) - 10);
+        },
+      });
+
+      const lowPoolGamma = gammaFromLatency(state.attackerLatency, state.honestLatency, 0);
+      const highPoolGamma = gammaFromLatency(state.attackerLatency, state.honestLatency, 0.6);
+      const currentPoolGamma = gammaFromLatency(state.attackerLatency, state.honestLatency, state.poolSize);
+      document.getElementById("poolGammaInsight").textContent =
+        `At the current pool size ${formatFixed(state.poolSize, 2)}, derived gamma is ${formatFixed(currentPoolGamma, 3)}. Over this dashboard range, pool size shifts gamma from ${formatFixed(lowPoolGamma, 3)} to ${formatFixed(highPoolGamma, 3)} with latency held fixed.`;
 
       drawLineChart(document.getElementById("latencyChart"), {
         xLabel: "Attacker latency (ms)",
