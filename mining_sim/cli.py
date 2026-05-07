@@ -1,6 +1,11 @@
 import argparse
 from pathlib import Path
 
+from mining_sim.analysis import (
+    estimate_threshold_residuals,
+    read_results_csv,
+    write_dict_csv,
+)
 from mining_sim.model import gamma_from_latency, theoretical_threshold
 from mining_sim.output import write_csv
 from mining_sim.simulation import sweep, latency_sweep, pool_sweep
@@ -50,7 +55,11 @@ def build_parser():
     parser.add_argument("--gammas", type=parse_gammas, default=parse_gammas("0,0.25,0.5,0.75"))
     parser.add_argument("--seed", type=int, default=521, help="random seed")
     parser.add_argument("--csv", type=Path, default=Path("results/selfish_mining_sweep.csv"))
-    parser.add_argument("--experiment", choices=["legacy", "latency", "pool"], default="legacy")
+    parser.add_argument("--input-csv", type=Path, default=Path("results/exp1_legacy.csv"),
+                        help="input CSV for threshold residual analysis")
+    parser.add_argument("--experiment",
+                        choices=["legacy", "latency", "pool", "threshold_residuals"],
+                        default="legacy")
     parser.add_argument("--alpha", type=float, default=0.30, help="fixed alpha for latency and pool sweep")
     parser.add_argument("--pool-size", type=float, default=None, help="attacker pool share for latency mode")
     parser.add_argument("--attacker-latency-ms", type=float, default=None)
@@ -64,6 +73,19 @@ def main():
     # Read user options, run the simulation, and write output files.
     parser = build_parser()
     args = parser.parse_args()
+
+    if args.experiment == "threshold_residuals":
+        rows = read_results_csv(args.input_csv)
+        residual_rows = estimate_threshold_residuals(rows)
+        write_dict_csv(args.csv, residual_rows)
+        print(f"wrote {args.csv}")
+
+        for row in residual_rows:
+            print(
+                "gamma={gamma:.3f} closed_form={closed_form_threshold:.6f} "
+                "empirical={empirical_threshold:.6f} residual={residual:+.6f}".format(**row)
+            )
+        return
 
     # experiment 1: gamma sweep / derived gamma sweep
     if args.experiment == "legacy":
@@ -146,3 +168,7 @@ def main():
 
 
 __all__ = ["build_parser", "main", "parse_gammas", "parse_float_list"]
+
+
+if __name__ == "__main__":
+    main()
