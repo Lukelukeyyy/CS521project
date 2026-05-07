@@ -43,7 +43,8 @@ def theoretical_threshold(gamma):
     return (1 - gamma) / (3 - 2 * gamma)
 
 
-def gamma_from_latency(attacker_latency_ms, honest_latency_ms, *, pool_size=0.0, base_gamma=0.5, ):
+def gamma_from_latency(attacker_latency_ms, honest_latency_ms, *, pool_size=0.0,
+                       base_gamma=0.5, latency_weight=0.35, pool_weight=0.15):
     # Convert latency and pool reach into an estimated gamma value.
     if attacker_latency_ms < 0 or honest_latency_ms < 0:
         raise ValueError("latencies must be non-negative")
@@ -52,5 +53,5 @@ def gamma_from_latency(attacker_latency_ms, honest_latency_ms, *, pool_size=0.0,
 
     total = max(attacker_latency_ms + honest_latency_ms, 1e-9)
     latency_edge = (honest_latency_ms - attacker_latency_ms) / total
-    raw_gamma = base_gamma + 0.35 * latency_edge + 0.15 * pool_size
+    raw_gamma = base_gamma + latency_weight * latency_edge + pool_weight * pool_size
     return min(1.0, max(0.0, raw_gamma))
