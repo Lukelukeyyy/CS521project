@@ -1,240 +1,305 @@
 # Topic 6: Bitcoin Mining and Selfish Mining
 
-This project contains a simulator for Bitcoin selfish mining. It models:
+This project is a CS521 simulator and analysis for Bitcoin selfish mining. It uses simulation to study how attacker hash rate, tie-breaking behavior, network latency, and mining pool size affect selfish mining profitability.
 
-- attacker hash-rate share (alpha)
-- honest network tie-breaking behavior (gamma)
-- latency-derived propagation advantage
-- pool-size effects
+The simulator exports CSV files, and the main experimental results can be combined into an interactive dashboard:
 
-The simulator produces **CSV data**, and the final results are displayed through a unified interactive dashboard:
-
-- `results/demo_dashboard.html`
-
----
-
-## Mining Economics Background
-
-Bitcoin miners earn expected revenue roughly proportional to their share of the global hash rate. Difficulty adjusts every 2016 blocks so that the network returns toward a 10 minute block interval after hash rate changes.
-
-Mining pools reduce payout variance by sharing rewards:
-
-- **PPS**: pays a fixed amount per submitted share, shifting variance risk to the pool operator.
-- **PPLNS**: pays according to recent submitted shares around an actual block, keeping more variance on miners and discouraging pool hopping.
-
-Energy consumption matters because mining profit is driven by block rewards and fees minus electricity, hardware, cooling, and operational costs. Strategies that increase relative revenue can be economically meaningful even if they do not increase total network block production.
-
----
-
-# Project Structure
+```text
+results/demo_dashboard.html
 ```
+
+## Project Goals
+
+Selfish mining is a strategy where an attacker withholds newly mined blocks, builds a private chain, and selectively publishes blocks to make honest miners waste work on orphaned blocks. The attacker is profitable when its accepted block share is higher than its hash-rate share.
+
+This project studies three questions:
+
+- How does the tie-breaking parameter `gamma` change the profitability threshold?
+- How does lower attacker latency affect `gamma` and relative revenue?
+- How does mining pool size affect propagation advantage and profitability?
+
+## Project Structure
+
+```text
 CS521project/
-├── selfish_mining_sim.py
-├── build_demo_dashboard.py
+├── README.md
+├── selfish_mining_sim.py              # Command-line entry point
+├── build_demo_dashboard.py            # Builds the final HTML dashboard
 ├── mining_sim/
-│   ├── cli.py
-│   ├── model.py
-│   ├── simulation.py
-│   └── output.py
+│   ├── __init__.py
+│   ├── cli.py                         # Argument parsing and experiment routing
+│   ├── model.py                       # Data models, threshold formula, gamma estimation
+│   ├── simulation.py                  # Core selfish mining simulation
+│   ├── analysis.py                    # Threshold residual and sensitivity analysis
+│   ├── output.py                      # CSV writer
+│   └── demo_dashboard_template.html   # Dashboard template
 └── results/
     ├── exp1_legacy.csv
     ├── exp2_latency.csv
     ├── exp3_pool.csv
+    ├── threshold_residuals.csv
+    ├── gamma_sensitivity.csv
+    ├── selfish_mining_sweep.csv
     └── demo_dashboard.html
 ```
----
 
-# How to Use the Simulator
+## Requirements
+
+The project uses only the Python standard library. No third-party packages are required.
+
+## Quick Start
+
+Run the three main experiments:
+
+```bash
+python selfish_mining_sim.py --experiment legacy \
+  --blocks 100000 \
+  --trials 8 \
+  --csv results/exp1_legacy.csv
+
+python selfish_mining_sim.py --experiment latency \
+  --alpha 0.20 \
+  --honest-latency-ms 100 \
+  --pool-size 0.2 \
+  --latency-values 20,40,60,80,100 \
+  --blocks 100000 \
+  --trials 8 \
+  --csv results/exp2_latency.csv
+
+python selfish_mining_sim.py --experiment pool \
+  --alpha 0.20 \
+  --attacker-latency-ms 50 \
+  --honest-latency-ms 100 \
+  --pool-values 0.0,0.1,0.2,0.3,0.4,0.5 \
+  --blocks 100000 \
+  --trials 8 \
+  --csv results/exp3_pool.csv
+```
+
+Then build the dashboard:
 
-## Basic Usage
+```bash
+python build_demo_dashboard.py
+```
+
+Open the generated file in a browser:
+
+```text
+results/demo_dashboard.html
+```
+
+## Command-Line Usage
+
+Main command:
+
+```bash
+python selfish_mining_sim.py --experiment <experiment> [options]
+```
+
+Supported experiment modes:
+
+| Mode | Description |
+| --- | --- |
+| `legacy` | Experiment 1: sweep `alpha` across one or more `gamma` values |
+| `latency` | Experiment 2: fix `alpha` and sweep attacker latency |
+| `pool` | Experiment 3: fix `alpha` and latency, then sweep pool size |
+| `threshold_residuals` | Estimate empirical thresholds and compare them with the closed-form threshold |
+| `sensitivity` | Analyze how alternative latency and pool weights affect estimated `gamma` |
 
-Run the simulator using:
+Common options:
+
+| Option | Description |
+| --- | --- |
+| `--blocks` | Number of mining events per trial |
+| `--trials` | Number of Monte Carlo trials per parameter setting |
+| `--seed` | Random seed for reproducible runs |
+| `--csv` | Output CSV path |
+| `--alpha` | Attacker hash-rate share, mainly used by latency and pool experiments |
+| `--alpha-step` | Step size for the `alpha` sweep in the legacy experiment |
+| `--gammas` | Comma-separated `gamma` values for the legacy experiment, such as `0,0.25,0.5,0.75` |
+| `--attacker-latency-ms` | Attacker block propagation latency in milliseconds |
+| `--honest-latency-ms` | Honest network block propagation latency in milliseconds |
+| `--latency-values` | Comma-separated attacker latency values for the latency experiment |
+| `--pool-size` | Attacker pool share used by the latency experiment |
+| `--pool-values` | Comma-separated pool sizes for the pool experiment |
+| `--input-csv` | Input CSV used by `threshold_residuals` |
 
-    python selfish_mining_sim.py --experiment <type> [options]
+## Experiment 1: Gamma Sweep
 
-Then build the final dashboard using:
+This experiment studies how selfish mining profitability changes with `gamma`, the fraction of honest miners that mine on the attacker branch during a public fork race.
 
-    python build_demo_dashboard.py
+```bash
+python selfish_mining_sim.py --experiment legacy \
+  --gammas 0,0.25,0.5,0.75 \
+  --alpha-step 0.01 \
+  --blocks 100000 \
+  --trials 8 \
+  --csv results/exp1_legacy.csv
+```
 
-### Available Experiments
+Output:
 
-- `legacy`   → Experiment 1 (gamma sweep)
-- `latency`  → Experiment 2 (latency sweep)
-- `pool`     → Experiment 3 (pool size sweep)
+```text
+results/exp1_legacy.csv
+```
 
----
+Dashboard view:
 
-## Common Parameters
+- X-axis: attacker hash-rate share `alpha`
+- Y-axis: attacker relative revenue
+- Break-even line: `relative_revenue = alpha`
+- Theoretical profitability threshold for each `gamma`
 
-- `--alpha` → attacker hash-rate share  
-- `--blocks` → number of mining events per trial  
-- `--trials` → number of Monte Carlo runs  
-- `--csv` → output CSV file  
+## Experiment 2: Latency Sweep
 
----
+This experiment fixes attacker hash-rate share `alpha` and sweeps attacker latency. The simulator converts latency advantage and pool size into an estimated `gamma`, then runs the selfish mining simulation.
 
-# Experiment 1: Gamma Sweep
+```bash
+python selfish_mining_sim.py --experiment latency \
+  --alpha 0.20 \
+  --honest-latency-ms 100 \
+  --pool-size 0.2 \
+  --latency-values 20,40,60,80,100 \
+  --blocks 100000 \
+  --trials 8 \
+  --csv results/exp2_latency.csv
+```
 
-This experiment studies how selfish mining profitability depends directly on **gamma**.
+Output:
 
-## Run
+```text
+results/exp2_latency.csv
+```
 
-    python selfish_mining_sim.py --experiment legacy \
-      --blocks 150000 \
-      --trials 8 \
-      --csv results/exp1_legacy.csv
+This experiment shows whether lower attacker latency increases `gamma` enough for `relative_revenue` to exceed `alpha`.
 
-## Output
+## Experiment 3: Pool Size Sweep
 
-- CSV: `results/exp1_legacy.csv`
+This experiment fixes attacker hash-rate share and network latency, then sweeps attacker pool size. In this model, a larger pool improves propagation reach and increases the estimated `gamma`.
 
-## Visualization in Dashboard
+```bash
+python selfish_mining_sim.py --experiment pool \
+  --alpha 0.20 \
+  --attacker-latency-ms 50 \
+  --honest-latency-ms 100 \
+  --pool-values 0.0,0.1,0.2,0.3,0.4,0.5 \
+  --blocks 100000 \
+  --trials 8 \
+  --csv results/exp3_pool.csv
+```
 
-- X-axis: attacker hash share (alpha)
-- Y-axis: relative attacker revenue
+Output:
 
-Includes:
-- simulated revenue curve  
-- break-even line (y = alpha)  
-- theoretical threshold line  
+```text
+results/exp3_pool.csv
+```
 
----
+This experiment shows how pool size can shift the attack from unprofitable to profitable when `alpha` is fixed.
 
-# Experiment 2: Latency Sweep
+## Additional Analysis
 
-This experiment studies how **network latency affects selfish mining**.
+### Threshold Residuals
 
-Latency first changes gamma, and gamma then affects the attacker's revenue.
+This mode reads Experiment 1 output, estimates the empirical profitability threshold, and compares it with the closed-form threshold.
 
-## Run
+```bash
+python selfish_mining_sim.py --experiment threshold_residuals \
+  --input-csv results/exp1_legacy.csv \
+  --csv results/threshold_residuals.csv
+```
 
-    python selfish_mining_sim.py --experiment latency \
-      --alpha 0.20 \
-      --honest-latency-ms 100 \
-      --pool-size 0.2 \
-      --latency-values 20,40,60,80,100 \
-      --blocks 200000 \
-      --trials 10 \
-      --csv results/exp2_latency.csv
+Output:
 
-## Output
+```text
+results/threshold_residuals.csv
+```
 
-- CSV: `results/exp2_latency.csv`
+### Gamma Mapping Sensitivity
 
-## Visualization in Dashboard
+This mode evaluates alternative latency and pool weighting assumptions in `gamma_from_latency()`.
 
-### Chart 1
-- latency → relative revenue  
-- includes break-even line (y = alpha)  
+```bash
+python selfish_mining_sim.py --experiment sensitivity \
+  --csv results/gamma_sensitivity.csv
+```
 
-### Chart 2
-- latency → gamma  
-- includes critical gamma threshold  
+Output:
 
-The critical gamma threshold indicates the minimum gamma required for selfish mining to be profitable at the given alpha.
+```text
+results/gamma_sensitivity.csv
+```
 
----
+## CSV Columns
 
-# Experiment 3: Pool Size Sweep
+The main experiment CSV files contain these columns:
 
-This experiment studies how **mining pool size affects selfish mining**.
+| Column | Meaning |
+| --- | --- |
+| `experiment` | Experiment name |
+| `sweep_value` | Swept value: `alpha` for legacy, attacker latency for latency, pool size for pool |
+| `alpha` | Attacker hash-rate share |
+| `gamma` | Fraction of honest miners that choose the attacker branch during a tie |
+| `theoretical_threshold` | Closed-form profitability threshold |
+| `attacker_latency_ms` | Attacker latency in milliseconds |
+| `honest_latency_ms` | Honest network latency in milliseconds |
+| `pool_size` | Attacker pool share |
+| `relative_revenue` | Attacker accepted-block share |
+| `revenue_gain` | `relative_revenue - alpha` |
+| `profitable` | Whether the attacker earns more than its hash-rate share |
+| `attacker_revenue` | Accepted blocks credited to the attacker |
+| `honest_revenue` | Accepted blocks credited to honest miners |
+| `orphaned_blocks` | Blocks wasted through forks or orphaning |
+| `blocks` | Number of simulated mining events |
 
-Pool size first changes gamma, and gamma then affects the attacker's revenue.
+## Selfish Mining Model
 
-## Run
+The closed-form profitability condition used in this project is:
 
-    python selfish_mining_sim.py --experiment pool \
-      --alpha 0.20 \
-      --attacker-latency-ms 50 \
-      --honest-latency-ms 100 \
-      --pool-values 0.0,0.1,0.2,0.3,0.4,0.5 \
-      --blocks 200000 \
-      --trials 10 \
-      --csv results/exp3_pool.csv
+```text
+alpha > (1 - gamma) / (3 - 2 * gamma)
+```
 
-## Output
+Where:
 
-- CSV: `results/exp3_pool.csv`
+- `alpha` is the attacker hash-rate share.
+- `gamma` is the fraction of honest miners that mine on the attacker branch during a tie.
 
-## Visualization in Dashboard
+Examples:
 
-### Chart 1
-- pool size → relative revenue  
-- includes break-even line (y = alpha)  
+| gamma | Threshold |
+| --- | --- |
+| `0.00` | `0.333` |
+| `0.50` | `0.250` |
+| `0.75` | `0.167` |
 
-### Chart 2
-- pool size → gamma  
-- includes critical gamma threshold  
+The project estimates `gamma` from latency and pool size with a simplified mapping:
 
----
+```text
+gamma = base_gamma + latency_weight * latency_edge + pool_weight * pool_size
+```
 
-# Build the Final Dashboard
+By default, `base_gamma = 0.5`, `latency_weight = 0.35`, and `pool_weight = 0.15`. This is an experimental model for comparing propagation advantage and pool reach; it is not a full network-level Bitcoin propagation model.
 
-After generating all three CSV files, run:
+## Dashboard
 
-    python build_demo_dashboard.py
+`build_demo_dashboard.py` reads:
 
-This creates:
+```text
+results/exp1_legacy.csv
+results/exp2_latency.csv
+results/exp3_pool.csv
+```
 
-- `results/demo_dashboard.html`
+The dashboard summarizes:
 
-The dashboard combines all experiment results into one final interactive view.
+- Experiment 1: profitability curves for different `gamma` values
+- Experiment 2: attacker latency, estimated `gamma`, and relative revenue
+- Experiment 3: pool size, estimated `gamma`, and relative revenue
 
----
+## Key Takeaways
 
-# Result
-
-## Final Demo Dashboard
-
-Open:
-
-    results/demo_dashboard.html
-
-The dashboard includes:
-
-- Experiment 1: Gamma Sweep  
-- Experiment 2: Latency Sweep  
-- Experiment 3: Pool Size Sweep  
-
----
-
-# Selfish Mining Model
-
-Eyal and Sirer showed that a miner can gain advantage by:
-
-- withholding blocks  
-- selectively releasing them  
-- causing honest miners to waste work on orphaned blocks  
-
----
-
-## Parameters
-
-- **alpha**: attacker hash-rate share  
-- **gamma**: fraction of honest miners mining on attacker’s chain during a tie  
-- **network latency**: used to estimate gamma  
-- **pool size**: propagation advantage  
-
----
-
-## Theoretical Threshold
-
-Selfish mining becomes profitable when:
-
-    alpha > (1 - gamma) / (3 - 2 * gamma)
-
----
-
-## Examples
-
-- gamma = 0.00 → threshold ≈ 0.333  
-- gamma = 0.50 → threshold ≈ 0.250  
-- gamma = 0.75 → threshold ≈ 0.167  
-
----
-
-# Key Insight
-
-- Experiment 1 identifies profitability thresholds  
-- Experiment 2 shows how latency influences gamma and revenue  
-- Experiment 3 shows how pool size influences gamma and revenue  
+- Selfish mining can be profitable below 50% hash rate.
+- Higher `gamma` lowers the theoretical profitability threshold.
+- Lower propagation latency can increase the attacker's effective tie-breaking advantage.
+- Larger pool size can improve propagation reach and increase relative revenue.
+- Profitability occurs when `relative_revenue` is greater than `alpha`.
