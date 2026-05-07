@@ -1,5 +1,3 @@
-"""CSV output for simulator results."""
-
 import csv
 
 from mining_sim.model import theoretical_threshold
