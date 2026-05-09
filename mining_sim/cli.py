@@ -70,10 +70,42 @@ def build_parser():
     return parser
 
 
+def validate_args(parser, args):
+    # Validate cross-option and numeric constraints before running experiments.
+    if args.blocks <= 0:
+        parser.error("--blocks must be positive")
+    if args.trials <= 0:
+        parser.error("--trials must be positive")
+    if args.alpha_step <= 0:
+        parser.error("--alpha-step must be positive")
+    if args.alpha_step > 0.49:
+        parser.error("--alpha-step must be at most 0.49")
+    if not 0 < args.alpha < 1:
+        parser.error("--alpha must be between 0 and 1")
+
+    if args.pool_size is not None and not 0 <= args.pool_size <= 1:
+        parser.error("--pool-size must be between 0 and 1")
+    if args.attacker_latency_ms is not None and args.attacker_latency_ms < 0:
+        parser.error("--attacker-latency-ms must be non-negative")
+    if args.honest_latency_ms is not None and args.honest_latency_ms < 0:
+        parser.error("--honest-latency-ms must be non-negative")
+
+    if args.latency_values is not None:
+        for value in args.latency_values:
+            if value < 0:
+                parser.error("--latency-values must contain only non-negative values")
+
+    if args.pool_values is not None:
+        for value in args.pool_values:
+            if not 0 <= value <= 1:
+                parser.error("--pool-values must contain only values between 0 and 1")
+
+
 def main():
     # Read user options, run the simulation, and write output files.
     parser = build_parser()
     args = parser.parse_args()
+    validate_args(parser, args)
 
     if args.experiment == "threshold_residuals":
         rows = read_results_csv(args.input_csv)
@@ -179,7 +211,7 @@ def main():
         print(f"gamma={gamma:.3f} theoretical_threshold={threshold:.3f}")
 
 
-__all__ = ["build_parser", "main", "parse_gammas", "parse_float_list"]
+__all__ = ["build_parser", "main", "parse_gammas", "parse_float_list", "validate_args"]
 
 
 if __name__ == "__main__":
